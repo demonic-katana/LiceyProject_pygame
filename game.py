@@ -19,10 +19,11 @@ def load_image(name, color_key=None):
 
 
 WIDTH, HEIGHT = 500, 500
-_map = list(map(str.strip, open('map.txt', mode='r', encoding='utf8').readlines()))
+_map = list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
 all_sprites = pygame.sprite.Group()
 tiles = pygame.sprite.Group()
 player = pygame.sprite.Group()
+tile_width = tile_height = 50
 
 
 class Tile(pygame.sprite.Sprite):
@@ -31,6 +32,7 @@ class Tile(pygame.sprite.Sprite):
         self.sign = sign
         self.image = image
         self.side = side
+        self.abs_pos = [pos_x, pos_y]
         self.rect = self.image.get_rect().move(
             self.side * pos_x, self.side * pos_y)
 
@@ -46,14 +48,38 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             self.side * pos_x + 15, self.side * pos_y + 5)
         self.pos = (pos_x, pos_y)
+        self.draw_pos = (pos_x, pos_y)
 
-    def move(self, x, y):
-        self.pos = (self.pos[0] + x, self.pos[1] + y)
-        self.rect = self.image.get_rect().move(
-            self.side * self.pos[0] + 15, self.side * self.pos[1] + 5)
+    def move(self, dx, dy, obj):
+        self.pos = (dx + self.pos[0], dy + self.pos[1])
+        # смещение персонажа
+        if obj == 'player':
+            self.draw_pos = (self.draw_pos[0] + dx, self.draw_pos[1] + dy)
+            self.rect = self.image.get_rect().move(self.side * self.draw_pos[0] + 15, self.side * self.draw_pos[1] + 5)
+        # смещение камеры
+        elif obj == 'camera':
+            camera.dx -= tile_width * dx
+            camera.dy -= tile_height * dy
+            for tile in tiles:
+                camera.apply(tile)
 
 
-class Board():
+class Camera:
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    def apply(self, obj):
+        obj.rect.x = obj.rect.x + self.dx
+        obj.rect.y = obj.rect.y + self.dy
+
+
+    def update(self):
+        self.dx = 0
+        self.dy = 0
+
+
+class Board:
     def __init__(self, WIDTH, HEIGHT, side, map):
         self.cell = [[0] * HEIGHT for i in range(WIDTH)]
         self.borders = ['#']
@@ -71,11 +97,22 @@ class Board():
                 elif map[y][x] == 'p':
                     self.cell[x][y] = Tile('empty', x, y, self.images['.'], side, '.')
                     self.player = Player(x, y, self.images['p'], side)
+        self.WIDTH_IN_CAGES = x - 1
+        self.HEIGHT_IN_CAGES = y - 1
 
     def move(self, x, y):
         pos = self.player.pos
+        draw_pos = self.player.draw_pos
         if not self.cell[pos[0] + x][pos[1] + y].process(self.borders):
-            self.player.move(x, y)
+            # проверка на то, что лучше сместить: камеру или персонажа
+            check_move = x or y
+            check_pos = pos[0] if x else pos[1]
+            check_d_pos = draw_pos[0] if x else draw_pos[1]
+            max_pos = (self.WIDTH_IN_CAGES if x else self.HEIGHT_IN_CAGES) - 3
+            if not (4 < check_pos < max_pos) or (check_d_pos in [4, 5] and check_d_pos + check_move in [4, 5]):
+                self.player.move(x, y, 'player')
+            else:
+                self.player.move(x, y, 'camera')
 
     def update(self, pos):
         pass
@@ -97,6 +134,18 @@ def game(WIDTH, HEIGHT):
     clock = pygame.time.Clock()
     # инициализация объектов
     board = Board(len(_map), len(_map[0]), 50, _map)
+    # фокус на персонажа
+    pos = board.player.pos
+    dx = board.WIDTH_IN_CAGES - 8 if (n := (pos[0] - 4 if pos[0] - 4 > 0 else 0)) > board.WIDTH_IN_CAGES - 8 else n
+    dy = board.HEIGHT_IN_CAGES - 8 if (n := (pos[1] - 4 if pos[1] - 4 > 0 else 0)) > board.HEIGHT_IN_CAGES - 8 else n
+    camera.dx -= tile_width * dx
+    camera.dy -= tile_height * dy
+    for tile in tiles:
+        camera.apply(tile)
+    # сдвиг игрока относительно положения камеры
+    board.player.draw_pos = (board.player.draw_pos[0] - dx, board.player.draw_pos[1] - dy)
+    board.player.rect = board.player.image.get_rect().move(board.player.side * board.player.draw_pos[0] + 15,
+                                                           board.player.side * board.player.draw_pos[1] + 5)
     # игровой цикл / игра началась
     running = True
     while running:
@@ -113,13 +162,12 @@ def game(WIDTH, HEIGHT):
                 elif event.key == pygame.K_RIGHT:
                     board.move(1, 0)
         screen.fill(pygame.Color(0, 0, 0))
-
         # отрисовка карты
         tiles.update(board.player.pos)
         tiles.draw(screen)
         # отрисовка персонажа
         player.draw(screen)
-
+        camera.update()
         pygame.display.flip()
     return 0
 
@@ -133,6 +181,7 @@ def menu():
 
 if __name__ == '__main__':
     if menu():
+        camera = Camera()
         _r = game(500, 500)
         print(_r)
         sys.exit(_r)
