@@ -19,7 +19,8 @@ def load_image(name, color_key=None):
 
 
 WIDTH, HEIGHT = 500, 500
-_map = list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
+level_1 = list(map(str.strip, open('data/level_01.map', mode='r', encoding='utf8').readlines()))
+level_2 = list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
 tile_width = tile_height = 50
 
 
@@ -225,7 +226,10 @@ def menu():
                 if event.button == 1:
                     event_pos = event.pos
                     if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
-                        selection = 1
+                        selection = level_1
+                        running = False
+                    elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
+                        selection = level_2
                         running = False
         # отрисовка меню
         screen.fill(pygame.Color(0, 0, 0))
@@ -245,6 +249,7 @@ if __name__ == '__main__':
         player = pygame.sprite.Group()
         keys_counter = pygame.sprite.Group()
         _r = menu()
+        _map = _r
         if _r:
             camera = Camera()
             _r = game(500, 500)
