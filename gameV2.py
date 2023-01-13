@@ -85,7 +85,8 @@ class Board:
             '.': load_image('floor.png'),
             'p': load_image('player.png'),
             'o': load_image('hole.png'),
-            'm': load_image('key.png')}
+            'm': load_image('key.png'),
+            'e': load_image('door.png')}
         for y in range(HEIGHT):
             for x in range(WIDTH):
                 if map[y][x] == '.':
@@ -96,6 +97,8 @@ class Board:
                     self.cell[x][y] = Tile('empty', x, y, self.images['o'], side, 'o')
                 elif map[y][x] == 'm':
                     self.cell[x][y] = Tile('empty', x, y, self.images['m'], side, 'm')
+                elif map[y][x] == 'e':
+                    self.cell[x][y] = Tile('empty', x, y, self.images['e'], side, 'e')
                 elif map[y][x] == 'p':
                     self.cell[x][y] = Tile('empty', x, y, self.images['.'], side, '.')
                     self.player = Player(x, y, self.images['p'], side)
@@ -168,6 +171,9 @@ def game(WIDTH, HEIGHT):
         if board.cell[player_pos[0]][player_pos[1]].process(['o']):
             running = False
             game_position = 'game_over'
+        if board.cell[player_pos[0]][player_pos[1]].process(['e']):
+            running = False
+            game_position = 'game_won'
         screen.fill(pygame.Color(0, 0, 0))
         # отрисовка карты
         tiles.update(board.player.pos)
@@ -186,7 +192,7 @@ def game(WIDTH, HEIGHT):
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                return 0
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     return 1
