@@ -136,6 +136,9 @@ def game(WIDTH, HEIGHT):
     clock = pygame.time.Clock()
     # инициализация объектов
     board = Board(len(_map), len(_map[0]), 50, _map)
+    # счётчик ключей
+    keys = 0
+    keys_color = (255, 0, 0)
     # фокус на персонажа
     pos = board.player.pos
     dx = board.WIDTH_IN_CAGES - 8 if (n := (pos[0] - 4 if pos[0] - 4 > 0 else 0)) > board.WIDTH_IN_CAGES - 8 else n
@@ -175,6 +178,13 @@ def game(WIDTH, HEIGHT):
         # отрисовка персонажа
         player.draw(screen)
         camera.update()
+        # отрисовка счётчика
+        image = load_image('keys_counter.png')
+        position_art = image.get_rect()
+        screen.blit(image, position_art)
+        font = pygame.font.Font(None, 25)
+        text = font.render(str(keys), True, keys_color)
+        screen.blit(text, (26, 5))
         pygame.display.flip()
     if game_position == 'game_won':
         image = load_image('game_won.png')
@@ -233,6 +243,7 @@ if __name__ == '__main__':
         all_sprites = pygame.sprite.Group()
         tiles = pygame.sprite.Group()
         player = pygame.sprite.Group()
+        keys_counter = pygame.sprite.Group()
         _r = menu()
         if _r:
             camera = Camera()
