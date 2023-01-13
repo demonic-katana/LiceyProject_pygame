@@ -84,7 +84,8 @@ class Board:
             '#': load_image('wall.png'),
             '.': load_image('floor.png'),
             'p': load_image('player.png'),
-            'o': load_image('hole.png')}
+            'o': load_image('hole.png'),
+            'm': load_image('key.png')}
         for y in range(HEIGHT):
             for x in range(WIDTH):
                 if map[y][x] == '.':
@@ -93,6 +94,8 @@ class Board:
                     self.cell[x][y] = Tile('wall', x, y, self.images['#'], side, '#')
                 elif map[y][x] == 'o':
                     self.cell[x][y] = Tile('empty', x, y, self.images['o'], side, 'o')
+                elif map[y][x] == 'm':
+                    self.cell[x][y] = Tile('empty', x, y, self.images['m'], side, 'm')
                 elif map[y][x] == 'p':
                     self.cell[x][y] = Tile('empty', x, y, self.images['.'], side, '.')
                     self.player = Player(x, y, self.images['p'], side)
