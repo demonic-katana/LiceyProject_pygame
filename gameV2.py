@@ -19,7 +19,8 @@ def load_image(name, color_key=None):
 
 
 WIDTH, HEIGHT = 500, 500
-_map = list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
+level_1 = list(map(str.strip, open('data/level_01.map', mode='r', encoding='utf8').readlines()))
+level_2 = list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
 tile_width = tile_height = 50
 
 
@@ -139,6 +140,9 @@ def game(WIDTH, HEIGHT):
     clock = pygame.time.Clock()
     # инициализация объектов
     board = Board(len(_map), len(_map[0]), 50, _map)
+    # счётчик ключей
+    keys = 0
+    keys_color = (255, 0, 0)
     # фокус на персонажа
     pos = board.player.pos
     dx = board.WIDTH_IN_CAGES - 8 if (n := (pos[0] - 4 if pos[0] - 4 > 0 else 0)) > board.WIDTH_IN_CAGES - 8 else n
@@ -181,6 +185,13 @@ def game(WIDTH, HEIGHT):
         # отрисовка персонажа
         player.draw(screen)
         camera.update()
+        # отрисовка счётчика
+        image = load_image('keys_counter.png')
+        position_art = image.get_rect()
+        screen.blit(image, position_art)
+        font = pygame.font.Font(None, 25)
+        text = font.render(str(keys), True, keys_color)
+        screen.blit(text, (26, 5))
         pygame.display.flip()
     if game_position == 'game_won':
         image = load_image('game_won.png')
@@ -221,7 +232,10 @@ def menu():
                 if event.button == 1:
                     event_pos = event.pos
                     if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
-                        selection = 1
+                        selection = level_1
+                        running = False
+                    elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
+                        selection = level_2
                         running = False
         # отрисовка меню
         screen.fill(pygame.Color(0, 0, 0))
@@ -239,7 +253,9 @@ if __name__ == '__main__':
         all_sprites = pygame.sprite.Group()
         tiles = pygame.sprite.Group()
         player = pygame.sprite.Group()
+        keys_counter = pygame.sprite.Group()
         _r = menu()
+        _map = _r
         if _r:
             camera = Camera()
             _r = game(500, 500)
