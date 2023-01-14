@@ -19,8 +19,8 @@ def load_image(name, color_key=None):
 
 
 WIDTH, HEIGHT = 500, 500
-level_1 = list(map(str.strip, open('data/level_01.map', mode='r', encoding='utf8').readlines()))
-level_2 = list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
+keys_1, level_1 = 5, list(map(str.strip, open('data/level_01.map', mode='r', encoding='utf8').readlines()))
+keys_2, level_2 = 10, list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
 tile_width = tile_height = 50
 
 
@@ -141,7 +141,7 @@ def game(WIDTH, HEIGHT):
     # инициализация объектов
     board = Board(len(_map), len(_map[0]), 50, _map)
     # счётчик ключей
-    keys = 0
+    players_keys = 0
     keys_color = (255, 0, 0)
     # фокус на персонажа
     pos = board.player.pos
@@ -172,10 +172,16 @@ def game(WIDTH, HEIGHT):
                 elif event.key == pygame.K_RIGHT:
                     board.move(1, 0)
         player_pos = board.player.pos
-        if board.cell[player_pos[0]][player_pos[1]].process(['o']):
+        if board.cell[player_pos[0]][player_pos[1]].process(['m']):
+            board.cell[player_pos[0]][player_pos[1]].image = board.images['.']
+            board.cell[player_pos[0]][player_pos[1]].sign = '.'
+            players_keys += 1
+            if players_keys == keys:
+                keys_color = (0, 255, 0)
+        elif board.cell[player_pos[0]][player_pos[1]].process(['o']):
             running = False
             game_position = 'game_over'
-        if board.cell[player_pos[0]][player_pos[1]].process(['e']):
+        elif board.cell[player_pos[0]][player_pos[1]].process(['e']):
             running = False
             game_position = 'game_won'
         screen.fill(pygame.Color(0, 0, 0))
@@ -190,7 +196,7 @@ def game(WIDTH, HEIGHT):
         position_art = image.get_rect()
         screen.blit(image, position_art)
         font = pygame.font.Font(None, 25)
-        text = font.render(str(keys), True, keys_color)
+        text = font.render(str(players_keys), True, keys_color)
         screen.blit(text, (26, 5))
         pygame.display.flip()
     if game_position == 'game_won':
@@ -231,10 +237,13 @@ def menu():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     event_pos = event.pos
+                    global keys
                     if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
+                        keys = keys_1
                         selection = level_1
                         running = False
                     elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
+                        keys = keys_2
                         selection = level_2
                         running = False
         # отрисовка меню
