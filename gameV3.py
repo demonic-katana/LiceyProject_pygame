@@ -19,7 +19,8 @@ def load_image(name, color_key=None):
 
 
 WIDTH, HEIGHT = 500, 500
-_map = list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
+keys_1, level_1 = 5, list(map(str.strip, open('data/level_01.map', mode='r', encoding='utf8').readlines()))
+keys_2, level_2 = 10, list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
 tile_width = tile_height = 50
 
 
@@ -80,6 +81,7 @@ class Board:
         self.cell = [[0] * HEIGHT for i in range(WIDTH)]
         self.borders = ['#']
         # механизм добавки ячеек, через которые нельзя проходить / пока нету /
+        self.exit_pos = (0, 0)
         self.images = {
             '#': load_image('wall.png'),
             '.': load_image('floor.png'),
@@ -99,6 +101,7 @@ class Board:
                     self.cell[x][y] = Tile('empty', x, y, self.images['m'], side, 'm')
                 elif map[y][x] == 'e':
                     self.cell[x][y] = Tile('empty', x, y, self.images['e'], side, 'e')
+                    self.exit_pos = (x, y)
                 elif map[y][x] == 'p':
                     self.cell[x][y] = Tile('empty', x, y, self.images['.'], side, '.')
                     self.player = Player(x, y, self.images['p'], side)
@@ -131,6 +134,10 @@ def terminate():
     sys.exit()
 
 
+def check_door(door_is_open, cell_is_door):
+    return (not cell_is_door) or (door_is_open and cell_is_door)
+
+
 def game(WIDTH, HEIGHT):
     # инициализация окна
     pygame.init()
@@ -140,8 +147,9 @@ def game(WIDTH, HEIGHT):
     # инициализация объектов
     board = Board(len(_map), len(_map[0]), 50, _map)
     # счётчик ключей
-    keys = 0
+    players_keys = 0
     keys_color = (255, 0, 0)
+    door_is_open = False
     # фокус на персонажа
     pos = board.player.pos
     dx = board.WIDTH_IN_CAGES - 8 if (n := (pos[0] - 4 if pos[0] - 4 > 0 else 0)) > board.WIDTH_IN_CAGES - 8 else n
@@ -158,23 +166,39 @@ def game(WIDTH, HEIGHT):
     game_position = 'game_on'
     running = True
     while running:
+        player_pos = board.player.pos
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return 0
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_UP and check_door(door_is_open,
+                                                           board.cell[player_pos[0]][player_pos[1] - 1].process(['e'])):
                     board.move(0, -1)
-                elif event.key == pygame.K_DOWN:
+                elif event.key == pygame.K_DOWN and check_door(door_is_open,
+                                                               board.cell[player_pos[0]][player_pos[1] + 1].process(
+                                                                   ['e'])):
                     board.move(0, 1)
-                elif event.key == pygame.K_LEFT:
+                elif event.key == pygame.K_LEFT and check_door(door_is_open,
+                                                               board.cell[player_pos[0] - 1][player_pos[1]].process(
+                                                                   ['e'])):
                     board.move(-1, 0)
-                elif event.key == pygame.K_RIGHT:
+                elif event.key == pygame.K_RIGHT and check_door(door_is_open,
+                                                                board.cell[player_pos[0] + 1][player_pos[1]].process(
+                                                                    ['e'])):
                     board.move(1, 0)
         player_pos = board.player.pos
-        if board.cell[player_pos[0]][player_pos[1]].process(['o']):
+        if board.cell[player_pos[0]][player_pos[1]].process(['m']):
+            board.cell[player_pos[0]][player_pos[1]].image = board.images['.']
+            board.cell[player_pos[0]][player_pos[1]].sign = '.'
+            players_keys += 1
+            if players_keys == keys:
+                keys_color = (0, 255, 0)
+                door_is_open = True
+                board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open.png')
+        elif board.cell[player_pos[0]][player_pos[1]].process(['o']):
             running = False
             game_position = 'game_over'
-        if board.cell[player_pos[0]][player_pos[1]].process(['e']):
+        elif board.cell[player_pos[0]][player_pos[1]].process(['e']):
             running = False
             game_position = 'game_won'
         screen.fill(pygame.Color(0, 0, 0))
@@ -189,7 +213,7 @@ def game(WIDTH, HEIGHT):
         position_art = image.get_rect()
         screen.blit(image, position_art)
         font = pygame.font.Font(None, 25)
-        text = font.render(str(keys), True, keys_color)
+        text = font.render(str(players_keys), True, keys_color)
         screen.blit(text, (26, 5))
         pygame.display.flip()
     if game_position == 'game_won':
@@ -222,7 +246,7 @@ def menu():
     menu_art = image.get_rect()
     running = True
     # работа с пользователем
-    selection = -1
+    selection = 0
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -230,8 +254,14 @@ def menu():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     event_pos = event.pos
+                    global keys
                     if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
-                        selection = 1
+                        keys = keys_1
+                        selection = level_1
+                        running = False
+                    elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
+                        keys = keys_2
+                        selection = level_2
                         running = False
         # отрисовка меню
         screen.fill(pygame.Color(0, 0, 0))
@@ -251,9 +281,8 @@ if __name__ == '__main__':
         player = pygame.sprite.Group()
         keys_counter = pygame.sprite.Group()
         _r = menu()
+        _map = _r
         if _r:
             camera = Camera()
             _r = game(500, 500)
             print(_r)
-        else:
-            print('Error. Main_window')
