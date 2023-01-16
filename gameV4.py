@@ -1,10 +1,11 @@
 import os
 import sys
 import pygame
+from time import sleep
 
 
 def load_image(name, color_key=None):
-    fullname = os.path.join('data', name)
+    fullname = os.path.join('data/image', name)
     try:
         image = pygame.image.load(fullname)
     except pygame.error as message:
@@ -19,8 +20,9 @@ def load_image(name, color_key=None):
 
 
 WIDTH, HEIGHT = 500, 500
-keys_1, level_1 = 5, list(map(str.strip, open('data/level_01.map', mode='r', encoding='utf8').readlines()))
-keys_2, level_2 = 10, list(map(str.strip, open('data/level_02.map', mode='r', encoding='utf8').readlines()))
+keys_1, level_1 = 5, list(map(str.strip, open('data/levels/level_01.map', mode='r', encoding='utf8').readlines()))
+keys_2, level_2 = 10, list(map(str.strip, open('data/levels/level_02.map', mode='r', encoding='utf8').readlines()))
+keys_3, level_3 = 15, list(map(str.strip, open('data/levels/level_03.map', mode='r', encoding='utf8').readlines()))
 tile_width = tile_height = 50
 
 
@@ -81,6 +83,7 @@ class Board:
         self.cell = [[0] * HEIGHT for i in range(WIDTH)]
         self.borders = ['#']
         # механизм добавки ячеек, через которые нельзя проходить / пока нету /
+        self.exit_pos = (0, 0)
         self.images = {
             '#': load_image('wall.png'),
             '.': load_image('floor.png'),
@@ -100,6 +103,7 @@ class Board:
                     self.cell[x][y] = Tile('empty', x, y, self.images['m'], side, 'm')
                 elif map[y][x] == 'e':
                     self.cell[x][y] = Tile('empty', x, y, self.images['e'], side, 'e')
+                    self.exit_pos = (x, y)
                 elif map[y][x] == 'p':
                     self.cell[x][y] = Tile('empty', x, y, self.images['.'], side, '.')
                     self.player = Player(x, y, self.images['p'], side)
@@ -132,17 +136,26 @@ def terminate():
     sys.exit()
 
 
+def check_door(door_is_open, cell_is_door):
+    return (not cell_is_door) or (door_is_open and cell_is_door)
+
+
 def game(WIDTH, HEIGHT):
     # инициализация окна
     pygame.init()
     size = WIDTH, HEIGHT
     screen = pygame.display.set_mode(size)
     clock = pygame.time.Clock()
+    pygame.mixer.music.load('data/music/main_music.wav')
+    pygame.mixer.music.play(-1)
     # инициализация объектов
     board = Board(len(_map), len(_map[0]), 50, _map)
     # счётчик ключей
     players_keys = 0
     keys_color = (255, 0, 0)
+    key_sound = pygame.mixer.Sound("data/music/take_key.wav")
+    door_is_open = False
+    door_opening_sound = pygame.mixer.Sound("data/music/opening_door.wav")
     # фокус на персонажа
     pos = board.player.pos
     dx = board.WIDTH_IN_CAGES - 8 if (n := (pos[0] - 4 if pos[0] - 4 > 0 else 0)) > board.WIDTH_IN_CAGES - 8 else n
@@ -159,25 +172,37 @@ def game(WIDTH, HEIGHT):
     game_position = 'game_on'
     running = True
     while running:
+        player_pos = board.player.pos
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return 0
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_UP and check_door(door_is_open,
+                                                           board.cell[player_pos[0]][player_pos[1] - 1].process(['e'])):
                     board.move(0, -1)
-                elif event.key == pygame.K_DOWN:
+                elif event.key == pygame.K_DOWN and check_door(door_is_open,
+                                                               board.cell[player_pos[0]][player_pos[1] + 1].process(
+                                                                   ['e'])):
                     board.move(0, 1)
-                elif event.key == pygame.K_LEFT:
+                elif event.key == pygame.K_LEFT and check_door(door_is_open,
+                                                               board.cell[player_pos[0] - 1][player_pos[1]].process(
+                                                                   ['e'])):
                     board.move(-1, 0)
-                elif event.key == pygame.K_RIGHT:
+                elif event.key == pygame.K_RIGHT and check_door(door_is_open,
+                                                                board.cell[player_pos[0] + 1][player_pos[1]].process(
+                                                                    ['e'])):
                     board.move(1, 0)
         player_pos = board.player.pos
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
             board.cell[player_pos[0]][player_pos[1]].image = board.images['.']
             board.cell[player_pos[0]][player_pos[1]].sign = '.'
             players_keys += 1
+            pygame.mixer.Sound.play(key_sound)
             if players_keys == keys:
                 keys_color = (0, 255, 0)
+                door_is_open = True
+                pygame.mixer.Sound.play(door_opening_sound)
+                board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open.png')
         elif board.cell[player_pos[0]][player_pos[1]].process(['o']):
             running = False
             game_position = 'game_over'
@@ -199,13 +224,20 @@ def game(WIDTH, HEIGHT):
         text = font.render(str(players_keys), True, keys_color)
         screen.blit(text, (26, 5))
         pygame.display.flip()
+    pygame.mixer.music.stop()
     if game_position == 'game_won':
         image = load_image('game_won.png')
         position_art = image.get_rect()
+        game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
+        pygame.mixer.music.load('data/music/game_won_music.wav')
     else:
         image = load_image('game_over.png')
         position_art = image.get_rect()
+        game_sound = pygame.mixer.Sound("data/music/game_over_sound.mp3")
+        pygame.mixer.music.load('data/music/game_over_music.wav')
+    pygame.mixer.Sound.play(game_sound)
     running = True
+    music_is_run = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -217,6 +249,11 @@ def game(WIDTH, HEIGHT):
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, position_art)
         pygame.display.update()
+        if not music_is_run:
+            sleep(0.9 if game_position == 'game_won' else 1.5)
+            pygame.mixer.music.play(-1)
+            music_is_run = True
+    pygame.mixer.music.stop()
     return 0
 
 
@@ -226,6 +263,8 @@ def menu():
     size = 700, 400
     screen = pygame.display.set_mode(size)
     image = load_image('start.bmp')
+    pygame.mixer.music.load('data/music/start_music.mp3')
+    pygame.mixer.music.play(-1)
     menu_art = image.get_rect()
     running = True
     # работа с пользователем
@@ -246,10 +285,15 @@ def menu():
                         keys = keys_2
                         selection = level_2
                         running = False
+                    elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262:
+                        keys = keys_3
+                        selection = level_3
+                        running = False
         # отрисовка меню
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, menu_art)
         pygame.display.update()
+    pygame.mixer.music.stop()
     return selection
 
 
