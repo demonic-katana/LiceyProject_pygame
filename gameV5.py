@@ -204,7 +204,8 @@ def game(WIDTH, HEIGHT):
                         music_on = True
 
                 elif event.key == pygame.K_ESCAPE:
-                    return 1
+                    running = False
+                    game_position = 'game_over'
 
         player_pos = board.player.pos
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
@@ -343,7 +344,6 @@ def menu():
                     else:
                         pygame.mixer.music.play(-1)
                         music_on = True
-                print(event.key)
         # отрисовка меню
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, menu_art)
