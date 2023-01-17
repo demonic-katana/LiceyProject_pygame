@@ -203,6 +203,9 @@ def game(WIDTH, HEIGHT):
                         pygame.mixer.music.play()
                         music_on = True
 
+                elif event.key == pygame.K_ESCAPE:
+                    return 1
+
         player_pos = board.player.pos
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
             board.cell[player_pos[0]][player_pos[1]].image = board.images['.']
@@ -237,6 +240,7 @@ def game(WIDTH, HEIGHT):
         text = font.render(str(players_keys), True, keys_color)
         screen.blit(text, (26, 5))
         pygame.display.flip()
+
     pygame.mixer.music.stop()
     if game_position == 'game_won':
         image = load_image('game_won.png')
@@ -244,12 +248,14 @@ def game(WIDTH, HEIGHT):
         pygame.mixer.music.load('data/music/game_won_music.wav')
         if music_on:
             game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
-    else:
+
+    elif game_position == 'game_over':
         image = load_image('game_over.png')
         position_art = image.get_rect()
         pygame.mixer.music.load('data/music/game_over_music.wav')
         if music_on:
             game_sound = pygame.mixer.Sound("data/music/game_over_sound.mp3")
+
     if music_on:
         pygame.mixer.Sound.play(game_sound)
     running = True
@@ -283,6 +289,7 @@ def game(WIDTH, HEIGHT):
 
 def menu():
     global music_on
+    global keys
     # инициализация окна
     pygame.init()
     size = 700, 400
@@ -303,7 +310,6 @@ def menu():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     event_pos = event.pos
-                    global keys
                     if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
                         keys = keys_1
                         selection = level_1
@@ -316,14 +322,28 @@ def menu():
                         keys = keys_3
                         selection = level_3
                         running = False
+
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_k:
+                if event.key == pygame.K_1:
+                    keys = keys_1
+                    selection = level_1
+                    running = False
+                elif event.key == pygame.K_2:
+                    keys = keys_2
+                    selection = level_2
+                    running = False
+                elif event.key == pygame.K_3:
+                    keys = keys_3
+                    selection = level_3
+                    running = False
+                elif event.key == pygame.K_k:
                     if music_on:
                         pygame.mixer.music.stop()
                         music_on = False
                     else:
                         pygame.mixer.music.play(-1)
                         music_on = True
+                print(event.key)
         # отрисовка меню
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, menu_art)
