@@ -146,7 +146,7 @@ def game(WIDTH, HEIGHT):
     pygame.init()
     size = WIDTH, HEIGHT
     screen = pygame.display.set_mode(size)
-    clock = pygame.time.Clock()
+    pygame.display.set_caption('The Walls')
     pygame.mixer.music.load('data/music/main_music.wav')
     if music_on:
         pygame.mixer.music.play(-1)
@@ -287,6 +287,7 @@ def menu():
     pygame.init()
     size = 700, 400
     screen = pygame.display.set_mode(size)
+    pygame.display.set_caption('The Walls')
     image = load_image('start.bmp')
     pygame.mixer.music.load('data/music/start_music.mp3')
     if music_on:
