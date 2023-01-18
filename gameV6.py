@@ -286,6 +286,9 @@ def game(WIDTH, HEIGHT):
                                     game_position = 'game_over'
                                     running = False
 
+                                if game_position == 'game_on':
+                                    board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
+
         player_pos = board.player.pos
 
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
@@ -304,7 +307,6 @@ def game(WIDTH, HEIGHT):
         elif board.fall:
             if choice([1, 1, 0, 0, 0, 0, 0]):
                 game_position = 'mini_game'
-                board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
                 board.fall = False
             else:
                 running = False
