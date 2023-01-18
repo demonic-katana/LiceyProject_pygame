@@ -140,11 +140,19 @@ def check_door(door_is_open, cell_is_door):
 
 
 def game(WIDTH, HEIGHT):
+    global music_on
     # инициализация окна
     pygame.init()
     size = WIDTH, HEIGHT
     screen = pygame.display.set_mode(size)
+<<<<<<<< HEAD:gameV3.py
     clock = pygame.time.Clock()
+========
+    pygame.display.set_caption('The Walls')
+    pygame.mixer.music.load('data/music/main_music.wav')
+    if music_on:
+        pygame.mixer.music.play(-1)
+>>>>>>>> origin/master:gameV5.py
     # инициализация объектов
     board = Board(len(_map), len(_map[0]), 50, _map)
     # счётчик ключей
@@ -187,14 +195,37 @@ def game(WIDTH, HEIGHT):
                                                                 board.cell[player_pos[0] + 1][player_pos[1]].process(
                                                                     ['e'])):
                     board.move(1, 0)
+
+                elif event.key == pygame.K_k:
+                    if music_on:
+                        pygame.mixer.music.stop()
+                        music_on = False
+                    else:
+                        pygame.mixer.music.play()
+                        music_on = True
+
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
+                    game_position = 'game_over'
+
         player_pos = board.player.pos
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
             board.cell[player_pos[0]][player_pos[1]].image = board.images['.']
             board.cell[player_pos[0]][player_pos[1]].sign = '.'
             players_keys += 1
+<<<<<<<< HEAD:gameV3.py
             if players_keys == keys:
                 keys_color = (0, 255, 0)
                 door_is_open = True
+========
+            if music_on:
+                pygame.mixer.Sound.play(key_sound)
+            if players_keys == keys:
+                keys_color = (0, 255, 0)
+                door_is_open = True
+                if music_on:
+                    pygame.mixer.Sound.play(door_opening_sound)
+>>>>>>>> origin/master:gameV5.py
                 board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open.png')
         elif board.cell[player_pos[0]][player_pos[1]].process(['o']):
             running = False
@@ -217,6 +248,7 @@ def game(WIDTH, HEIGHT):
         text = font.render(str(players_keys), True, keys_color)
         screen.blit(text, (26, 5))
         pygame.display.flip()
+<<<<<<<< HEAD:gameV3.py
     if game_position == 'game_won':
         image = load_image('game_won.png')
         position_art = image.get_rect()
@@ -224,6 +256,28 @@ def game(WIDTH, HEIGHT):
         image = load_image('game_over.png')
         position_art = image.get_rect()
     running = True
+========
+
+    pygame.mixer.music.stop()
+    if game_position == 'game_won':
+        image = load_image('game_won.png')
+        position_art = image.get_rect()
+        pygame.mixer.music.load('data/music/game_won_music.wav')
+        if music_on:
+            game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
+
+    elif game_position == 'game_over':
+        image = load_image('game_over.png')
+        position_art = image.get_rect()
+        pygame.mixer.music.load('data/music/game_over_music.wav')
+        if music_on:
+            game_sound = pygame.mixer.Sound("data/music/game_over_sound.mp3")
+
+    if music_on:
+        pygame.mixer.Sound.play(game_sound)
+    running = True
+    music_is_run = not music_on
+>>>>>>>> origin/master:gameV5.py
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -231,6 +285,14 @@ def game(WIDTH, HEIGHT):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     return 1
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_k:
+                    if music_on:
+                        pygame.mixer.music.stop()
+                        music_on = False
+                    else:
+                        pygame.mixer.music.play(-1)
+                        music_on = True
         # отрисовка экрана исходя из позиции игры
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, position_art)
@@ -239,11 +301,20 @@ def game(WIDTH, HEIGHT):
 
 
 def menu():
+    global music_on
+    global keys
     # инициализация окна
     pygame.init()
     size = 700, 400
     screen = pygame.display.set_mode(size)
+    pygame.display.set_caption('The Walls')
     image = load_image('start.bmp')
+<<<<<<<< HEAD:gameV3.py
+========
+    pygame.mixer.music.load('data/music/start_music.mp3')
+    if music_on:
+        pygame.mixer.music.play(-1)
+>>>>>>>> origin/master:gameV5.py
     menu_art = image.get_rect()
     running = True
     # работа с пользователем
@@ -255,7 +326,6 @@ def menu():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     event_pos = event.pos
-                    global keys
                     if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
                         keys = keys_1
                         selection = level_1
@@ -264,6 +334,34 @@ def menu():
                         keys = keys_2
                         selection = level_2
                         running = False
+<<<<<<<< HEAD:gameV3.py
+========
+                    elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262:
+                        keys = keys_3
+                        selection = level_3
+                        running = False
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    keys = keys_1
+                    selection = level_1
+                    running = False
+                elif event.key == pygame.K_2:
+                    keys = keys_2
+                    selection = level_2
+                    running = False
+                elif event.key == pygame.K_3:
+                    keys = keys_3
+                    selection = level_3
+                    running = False
+                elif event.key == pygame.K_k:
+                    if music_on:
+                        pygame.mixer.music.stop()
+                        music_on = False
+                    else:
+                        pygame.mixer.music.play(-1)
+                        music_on = True
+>>>>>>>> origin/master:gameV5.py
         # отрисовка меню
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, menu_art)
@@ -276,6 +374,7 @@ if __name__ == '__main__':
     global tiles
     global player
     _r = 1
+    music_on = True
     while _r == 1:
         all_sprites = pygame.sprite.Group()
         tiles = pygame.sprite.Group()
