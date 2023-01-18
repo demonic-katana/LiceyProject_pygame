@@ -304,6 +304,7 @@ def game(WIDTH, HEIGHT):
         elif board.fall:
             if choice([1, 1, 0, 0, 0, 0, 0]):
                 game_position = 'mini_game'
+                board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
                 board.fall = False
             else:
                 running = False
@@ -333,12 +334,12 @@ def game(WIDTH, HEIGHT):
             for y in range(3):
                 for elem in range(3):
                     if board_mg[y][elem] == 'x':
-                        pygame.draw.line(screen, pygame.Color('Black'), (35 + 89 * elem, 108 + 89 * y),
-                                         (118 + 89 * elem, 193 + 89 * y))
-                        pygame.draw.line(screen, pygame.Color('Black'), (118 + 89 * elem, 108 + 89 * y),
-                                         (35 + 89 * elem, 193 + 89 * y))
+                        pygame.draw.line(screen, pygame.Color("Black"), (35 + 89 * elem + 10, 108 + 89 * y + 10),
+                                         (118 + 89 * elem - 10, 193 + 89 * y - 10), 7)
+                        pygame.draw.line(screen, pygame.Color("Black"), (118 + 89 * elem - 10, 108 + 89 * y + 10),
+                                         (35 + 89 * elem + 10, 193 + 89 * y - 10), 7)
                     elif board_mg[y][elem] == 'o':
-                        pygame.draw.circle(screen, pygame.Color('Black'), (77 + 89 * elem, 150 + 89 * y), 42, 1)
+                        pygame.draw.circle(screen, pygame.Color(128, 128, 128), (77 + 89 * elem, 150 + 89 * y), 32, 6)
         pygame.display.flip()
 
     pygame.mixer.music.stop()
@@ -458,7 +459,7 @@ def menu():
                         else:
                             pygame.mixer.music.play(-1)
                             music_on = True
-                    print(event.key)
+
             elif position == 'help':
                 if event.type == pygame.QUIT:
                     running = False
@@ -505,4 +506,3 @@ if __name__ == '__main__':
         if _r:
             camera = Camera()
             _r = game(500, 500)
-            print(_r)
