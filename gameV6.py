@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import pygame
 from random import choice
@@ -59,7 +59,9 @@ class Button:
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, image, side):
         super().__init__(player, all_sprites)
-        self.image = image
+        self.image = image[0]
+        self.image1 = image[1]
+        self.flips = 0
         self.side = side
         self.rect = self.image.get_rect().move(
             self.side * pos_x + 15, self.side * pos_y + 5)
@@ -79,6 +81,12 @@ class Player(pygame.sprite.Sprite):
             for tile in tiles:
                 camera.apply(tile)
 
+    def update(self):
+        self.flips += 0.25
+        if self.flips == 10 or self.flips == 11:
+            self.image, self.image1 = self.image1, self.image
+        if self.flips == 11:
+            self.flips = 0
 
 class Camera:
     def __init__(self):
@@ -104,7 +112,7 @@ class Board:
         self.images = {
             '#': load_image('wall.png'),
             '.': load_image('floor.png'),
-            'p': load_image('player.png'),
+            'p': [load_image('player.png'), load_image('player1.png')],
             'o': load_image('hole.png'),
             'm': load_image('key.png'),
             'e': load_image('door.png')}
@@ -144,12 +152,6 @@ class Board:
             else:
                 self.player.move(x, y, 'camera')
 
-    def update(self, pos):
-        pass
-        # функция - возможная релализация смены кадра
-        # dx, dy =
-        # if pos[0] // 10 > 0:
-
 
 def terminate():
     pygame.quit()
@@ -165,6 +167,7 @@ def game(WIDTH, HEIGHT):
     # инициализация окна
     pygame.init()
     size = WIDTH, HEIGHT
+    clock = pygame.time.Clock()
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption('The Walls')
     pygame.mixer.music.load('data/music/main_music.wav')
@@ -285,9 +288,9 @@ def game(WIDTH, HEIGHT):
                                 if not len(chc):
                                     game_position = 'game_over'
                                     running = False
+                            if game_position == 'game_on':
+                                board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
 
-                                if game_position == 'game_on':
-                                    board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
 
         player_pos = board.player.pos
 
@@ -343,6 +346,9 @@ def game(WIDTH, HEIGHT):
                     elif board_mg[y][elem] == 'o':
                         pygame.draw.circle(screen, pygame.Color(128, 128, 128), (77 + 89 * elem, 150 + 89 * y), 32, 6)
         pygame.display.flip()
+        player.update()
+        clock.tick(20)
+
 
     pygame.mixer.music.stop()
     if game_position == 'game_won':
