@@ -26,6 +26,7 @@ keys_2, level_2 = 10, list(map(str.strip, open('data/levels/level_02.map', mode=
 keys_3, level_3 = 15, list(map(str.strip, open('data/levels/level_03.map', mode='r', encoding='utf8').readlines()))
 keys_4, level_4 = 20, list(map(str.strip, open('data/levels/level_04.map', mode='r', encoding='utf8').readlines()))
 tile_width = tile_height = 50
+door = ''
 
 
 class Tile(pygame.sprite.Sprite):
@@ -101,6 +102,13 @@ class Camera:
         self.dx = 0
         self.dy = 0
 
+    def update(self):
+        self.flips += 0.25
+        if self.flips == 10 or self.flips == 11:
+            self.image, self.image1 = self.image1, self.image
+        if self.flips == 11:
+            self.flips = 0
+
 
 class Board:
     def __init__(self, side, map):
@@ -116,6 +124,8 @@ class Board:
             'o': load_image('hole.png'),
             'm': load_image('key.png'),
             'e': load_image('door.png')}
+        if len(door):
+            self.images['e'] = load_image(door)
         for y in range(len(map)):
             for x in range(len(map[0])):
                 l = len(map[y])
@@ -306,6 +316,8 @@ def game(WIDTH, HEIGHT):
                 if music_on:
                     pygame.mixer.Sound.play(door_opening_sound)
                 board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open.png')
+                if len(door):
+                    board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open(exit).png')
 
         elif board.fall:
             if choice([1, 1, 0, 0, 0, 0, 0]):
@@ -351,7 +363,15 @@ def game(WIDTH, HEIGHT):
 
 
     pygame.mixer.music.stop()
-    if game_position == 'game_won':
+    if len(door) and game_position == 'game_won':
+        cast_count = 1
+        image = load_image(f'cast_scene{cast_count}.png')
+        position_art = image.get_rect()
+        pygame.mixer.music.load('data/music/game_won_music.wav')
+        if music_on:
+            game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
+
+    elif game_position == 'game_won':
         image = load_image('game_won.png')
         position_art = image.get_rect()
         pygame.mixer.music.load('data/music/game_won_music.wav')
@@ -369,6 +389,7 @@ def game(WIDTH, HEIGHT):
         pygame.mixer.Sound.play(game_sound)
     running = True
     music_is_run = not music_on
+    timer = 0
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -392,6 +413,14 @@ def game(WIDTH, HEIGHT):
             sleep(0.9 if game_position == 'game_won' else 1.5)
             pygame.mixer.music.play(-1)
             music_is_run = True
+        if len(door):
+            if timer == cast_count * 1000:
+                if cast_count != 3:
+                    cast_count += 1
+                image = load_image(f'cast_scene{cast_count}.png')
+                position_art = image.get_rect()
+                timer = 0
+            timer += 1
     pygame.mixer.music.stop()
     return 0
 
@@ -399,6 +428,7 @@ def game(WIDTH, HEIGHT):
 def menu():
     global music_on
     global keys
+    global door
     # инициализация окна
     pygame.init()
     size = 700, 400
@@ -426,6 +456,7 @@ def menu():
                         if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
                             keys = keys_1
                             selection = level_1
+                            door = 'door(exit).png'
                             running = False
                         elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
                             keys = keys_2
@@ -438,6 +469,7 @@ def menu():
                         elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351:
                             keys = keys_4
                             selection = level_4
+                            door = 'door(exit).png'
                             running = False
                         elif 549 < event_pos[0] < 690 and 310 < event_pos[1] < 393:
                             position, helping = 'help', 1
