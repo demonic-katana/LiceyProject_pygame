@@ -25,6 +25,10 @@ keys_1, level_1 = 5, list(map(str.strip, open('data/levels/level_01.map', mode='
 keys_2, level_2 = 10, list(map(str.strip, open('data/levels/level_02.map', mode='r', encoding='utf8').readlines()))
 keys_3, level_3 = 15, list(map(str.strip, open('data/levels/level_03.map', mode='r', encoding='utf8').readlines()))
 keys_4, level_4 = 20, list(map(str.strip, open('data/levels/level_04.map', mode='r', encoding='utf8').readlines()))
+with open('data/levels/progress.txt', mode='r', encoding='utf8') as progress:
+    progress = list(progress.read())
+level_completed = {keys_1: '2', keys_2: '3', keys_3: '4', keys_4: 'w'}
+locked_levels = {'2': 92, '3': 180, '4': 267}
 tile_width = tile_height = 50
 door = ''
 
@@ -93,6 +97,7 @@ class Camera:
     def __init__(self):
         self.dx = 0
         self.dy = 0
+        self.flips = 0
 
     def apply(self, obj):
         obj.rect.x = obj.rect.x + self.dx
@@ -101,13 +106,6 @@ class Camera:
     def update(self):
         self.dx = 0
         self.dy = 0
-
-    def update(self):
-        self.flips += 0.25
-        if self.flips == 10 or self.flips == 11:
-            self.image, self.image1 = self.image1, self.image
-        if self.flips == 11:
-            self.flips = 0
 
 
 class Board:
@@ -181,6 +179,7 @@ def game(WIDTH, HEIGHT):
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption('The Walls')
     pygame.mixer.music.load('data/music/main_music.wav')
+    final_sound = pygame.mixer.Sound("data/music/steps_sound.wav")
     if music_on:
         pygame.mixer.music.play(-1)
     # инициализация объектов
@@ -377,6 +376,10 @@ def game(WIDTH, HEIGHT):
         pygame.mixer.music.load('data/music/game_won_music.wav')
         if music_on:
             game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
+        if level_completed[keys] not in progress:
+            progress.append(level_completed[keys])
+            with open('data/levels/progress.txt', mode='w') as progress_w:
+                progress_w.write(''.join(progress))
 
     elif game_position == 'game_over':
         image = load_image('game_over.png')
@@ -409,15 +412,21 @@ def game(WIDTH, HEIGHT):
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, position_art)
         pygame.display.update()
-        if not music_is_run:
+        if not music_is_run and not len(door):
             sleep(0.9 if game_position == 'game_won' else 1.5)
             pygame.mixer.music.play(-1)
             music_is_run = True
         if len(door):
-            if timer == cast_count * 1000:
+            if music_on:
+                pygame.mixer.music.load("data/music/final_music.wav")
+                pygame.mixer.Sound.play(final_sound)
+            if timer == cast_count * 1500:
                 if cast_count != 3:
                     cast_count += 1
                 image = load_image(f'cast_scene{cast_count}.png')
+                if cast_count == 2 and music_on:
+                    pygame.mixer.music.play(-1)
+                    music_on = False
                 position_art = image.get_rect()
                 timer = 0
             timer += 1
@@ -439,6 +448,7 @@ def menu():
     if music_on:
         pygame.mixer.music.play(-1)
     menu_art = image.get_rect()
+    image_1 = load_image('locked_level.png')
     button_up = Button(13, 432, 84, 50)
     button_down = Button(152, 432, 84, 50)
     running = True
@@ -456,17 +466,16 @@ def menu():
                         if 1 < event_pos[0] < 142 and 2 < event_pos[1] < 87:
                             keys = keys_1
                             selection = level_1
-                            door = 'door(exit).png'
                             running = False
-                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
+                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175 and '2' in progress:
                             keys = keys_2
                             selection = level_2
                             running = False
-                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262:
+                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262 and '3' in progress:
                             keys = keys_3
                             selection = level_3
                             running = False
-                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351:
+                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351 and '4' in progress:
                             keys = keys_4
                             selection = level_4
                             door = 'door(exit).png'
@@ -525,6 +534,9 @@ def menu():
             image2 = load_image(f"help_{helping}.png")
             help_art = image2.get_rect()
             screen.blit(image2, help_art)
+        for lev in locked_levels:
+            if lev not in progress:
+                screen.blit(image_1, (1, locked_levels[lev]))
         pygame.display.update()
     pygame.mixer.music.stop()
     return selection
