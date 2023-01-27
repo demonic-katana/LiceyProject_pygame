@@ -97,7 +97,6 @@ class Camera:
     def __init__(self):
         self.dx = 0
         self.dy = 0
-        self.flips = 0
 
     def apply(self, obj):
         obj.rect.x = obj.rect.x + self.dx
@@ -111,7 +110,7 @@ class Camera:
 class Board:
     def __init__(self, side, map):
         self.cell = [[0] * HEIGHT for i in range(WIDTH)]
-        self.borders = ['#']
+        self.borders = ['#', 'i']
         self.fall = False
         # механизм добавки ячеек, через которые нельзя проходить / пока нету /
         self.exit_pos = (0, 0)
@@ -121,7 +120,8 @@ class Board:
             'p': [load_image('player.png'), load_image('player1.png')],
             'o': load_image('hole.png'),
             'm': load_image('key.png'),
-            'e': load_image('door.png')}
+            'e': load_image('door.png'),
+            'i': load_image('door.png')}
         if len(door):
             self.images['e'] = load_image(door)
         for y in range(len(map)):
@@ -135,6 +135,8 @@ class Board:
                     self.cell[x][y] = Tile(x, y, self.images['o'], side, 'o')
                 elif map[y][x] == 'm':
                     self.cell[x][y] = Tile(x, y, self.images['m'], side, 'm')
+                elif map[y][x] == 'i':
+                    self.cell[x][y] = Tile(x, y, self.images['i'], side, 'i')
                 elif map[y][x] == 'e':
                     self.cell[x][y] = Tile(x, y, self.images['e'], side, 'e')
                     self.exit_pos = (x, y)
@@ -145,10 +147,13 @@ class Board:
         self.HEIGHT_IN_CAGES = y - 1
 
     def move(self, x, y):
+        global not_is_exit
         pos = self.player.pos
         draw_pos = self.player.draw_pos
         if self.cell[pos[0] + x][pos[1] + y].sign == 'o':
             self.fall = True
+        elif self.cell[pos[0] + x][pos[1] + y].sign == 'i':
+            not_is_exit = ("Я отсюда пришёл.", 330)
         elif not self.cell[pos[0] + x][pos[1] + y].process(self.borders):
             # проверка на то, что лучше сместить: камеру или персонажа
             check_move = x or y
@@ -159,6 +164,8 @@ class Board:
                 self.player.move(x, y, 'player')
             else:
                 self.player.move(x, y, 'camera')
+        if not_is_exit and self.cell[pos[0] + x][pos[1] + y].sign != 'i':
+            not_is_exit = ('', 10)
 
 
 def terminate():
@@ -171,7 +178,7 @@ def check_door(door_is_open, cell_is_door):
 
 
 def game(WIDTH, HEIGHT):
-    global music_on
+    global music_on, players_keys, not_is_exit
     # инициализация окна
     pygame.init()
     size = WIDTH, HEIGHT
@@ -190,6 +197,7 @@ def game(WIDTH, HEIGHT):
     key_sound = pygame.mixer.Sound("data/music/take_key.wav")
     door_is_open = False
     door_opening_sound = pygame.mixer.Sound("data/music/opening_door.wav")
+    not_is_exit = ("", 50)
     # фокус на персонажа
     pos = board.player.pos
     dx = board.WIDTH_IN_CAGES - 8 if (n := (pos[0] - 4 if pos[0] - 4 > 0 else 0)) > board.WIDTH_IN_CAGES - 8 else n
@@ -214,24 +222,31 @@ def game(WIDTH, HEIGHT):
                 if event.type == pygame.QUIT:
                     return 0
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP and check_door(door_is_open,
+                    if not door_is_open and board.cell[player_pos[0] + 1][player_pos[1]].process(['e']):
+                        not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    if event.key == pygame.K_UP:
+                        if check_door(door_is_open,
                                                                board.cell[player_pos[0]][player_pos[1] - 1].process(
                                                                    ['e'])):
-                        board.move(0, -1)
-                    elif event.key == pygame.K_DOWN and check_door(door_is_open,
-                                                                   board.cell[player_pos[0]][player_pos[1] + 1].process(
-                                                                       ['e'])):
-                        board.move(0, 1)
-                    elif event.key == pygame.K_LEFT and check_door(door_is_open,
-                                                                   board.cell[player_pos[0] - 1][player_pos[1]].process(
-                                                                       ['e'])):
-                        board.move(-1, 0)
-                    elif event.key == pygame.K_RIGHT and check_door(door_is_open,
-                                                                    board.cell[player_pos[0] + 1][
-                                                                        player_pos[1]].process(
-                                                                        ['e'])):
-                        board.move(1, 0)
-
+                            board.move(0, -1)
+                        elif not door_is_open and board.cell[player_pos[0]][player_pos[1] - 1].process(
+                                                                   ['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    elif event.key == pygame.K_DOWN:
+                        if check_door(door_is_open, board.cell[player_pos[0]][player_pos[1] + 1].process(['e'])):
+                            board.move(0, 1)
+                        elif not door_is_open and board.cell[player_pos[0]][player_pos[1] + 1].process(['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    elif event.key == pygame.K_LEFT:
+                        if check_door(door_is_open, board.cell[player_pos[0] - 1][player_pos[1]].process(['e'])):
+                            board.move(-1, 0)
+                        elif not door_is_open and  board.cell[player_pos[0] - 1][player_pos[1]].process(['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    elif event.key == pygame.K_RIGHT:
+                        if check_door(door_is_open, board.cell[player_pos[0] + 1][player_pos[1]].process(['e'])):
+                            board.move(1, 0)
+                        elif not door_is_open and board.cell[player_pos[0] + 1][player_pos[1]].process(['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
                     elif event.key == pygame.K_k:
                         if music_on:
                             pygame.mixer.music.stop()
@@ -343,10 +358,15 @@ def game(WIDTH, HEIGHT):
             font = pygame.font.Font(None, 25)
             text = font.render(str(players_keys), True, keys_color)
             screen.blit(text, (26, 5))
+            # строка сообщений
+            font_ms = pygame.font.Font(None, 25)
+            text_ms = font_ms.render(not_is_exit[0], True, (255, 0, 0))
+            screen.blit(text_ms, (not_is_exit[1], 5))
         elif game_position == 'mini_game':
             image = load_image('mini_game1.png')
             mgame_art = image.get_rect()
             screen.blit(image, mgame_art)
+
             for y in range(3):
                 for elem in range(3):
                     if board_mg[y][elem] == 'x':
@@ -399,6 +419,8 @@ def game(WIDTH, HEIGHT):
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
+                    if len(door) and game_position == 'game_won':
+                        music_on = music_is_run
                     return 1
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_k:
@@ -417,16 +439,19 @@ def game(WIDTH, HEIGHT):
             pygame.mixer.music.play(-1)
             music_is_run = True
         if len(door):
-            if music_on:
+            if music_on and not music_is_run:
+                music_is_run = True
                 pygame.mixer.music.load("data/music/final_music.wav")
                 pygame.mixer.Sound.play(final_sound)
-            if timer == cast_count * 1500:
+            if game_position == 'game_won' and timer == cast_count * 1500:
                 if cast_count != 3:
                     cast_count += 1
                 image = load_image(f'cast_scene{cast_count}.png')
                 if cast_count == 2 and music_on:
                     pygame.mixer.music.play(-1)
                     music_on = False
+                elif cast_count == 2 and not music_on:
+                    music_is_run = False
                 position_art = image.get_rect()
                 timer = 0
             timer += 1
@@ -547,6 +572,7 @@ if __name__ == '__main__':
     global tiles
     global player
     _r = 1
+    not_is_exit = ('', 10)
     music_on = True
     while _r == 1:
         all_sprites = pygame.sprite.Group()
