@@ -529,14 +529,14 @@ def menu():
         if position == 'menu':
             # отрисовка меню
             screen.blit(image, menu_art)
+            for lev in locked_levels:
+                if lev not in progress:
+                    screen.blit(image_1, (1, locked_levels[lev]))
         elif position == 'help':
             # отрисовка Помощи
             image2 = load_image(f"help_{helping}.png")
             help_art = image2.get_rect()
             screen.blit(image2, help_art)
-        for lev in locked_levels:
-            if lev not in progress:
-                screen.blit(image_1, (1, locked_levels[lev]))
         pygame.display.update()
     pygame.mixer.music.stop()
     return selection
