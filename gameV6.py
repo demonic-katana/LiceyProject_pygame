@@ -492,15 +492,15 @@ def menu():
                             keys = keys_1
                             selection = level_1
                             running = False
-                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
+                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175 and '2' in progress:
                             keys = keys_2
                             selection = level_2
                             running = False
-                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262:
+                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262 and '3' in progress:
                             keys = keys_3
                             selection = level_3
                             running = False
-                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351:
+                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351 and '4' in progress:
                             keys = keys_4
                             selection = level_4
                             door = 'door(exit).png'
