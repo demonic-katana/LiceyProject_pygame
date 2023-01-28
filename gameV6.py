@@ -25,7 +25,12 @@ keys_1, level_1 = 5, list(map(str.strip, open('data/levels/level_01.map', mode='
 keys_2, level_2 = 10, list(map(str.strip, open('data/levels/level_02.map', mode='r', encoding='utf8').readlines()))
 keys_3, level_3 = 15, list(map(str.strip, open('data/levels/level_03.map', mode='r', encoding='utf8').readlines()))
 keys_4, level_4 = 20, list(map(str.strip, open('data/levels/level_04.map', mode='r', encoding='utf8').readlines()))
+with open('data/levels/progress.txt', mode='r', encoding='utf8') as progress:
+    progress = list(progress.read())
+level_completed = {keys_1: '2', keys_2: '3', keys_3: '4', keys_4: 'w'}
+locked_levels = {'2': 92, '3': 180, '4': 267}
 tile_width = tile_height = 50
+door = ''
 
 
 class Tile(pygame.sprite.Sprite):
@@ -105,7 +110,7 @@ class Camera:
 class Board:
     def __init__(self, side, map):
         self.cell = [[0] * HEIGHT for i in range(WIDTH)]
-        self.borders = ['#']
+        self.borders = ['#', 'i']
         self.fall = False
         # механизм добавки ячеек, через которые нельзя проходить / пока нету /
         self.exit_pos = (0, 0)
@@ -115,7 +120,10 @@ class Board:
             'p': [load_image('player.png'), load_image('player1.png')],
             'o': load_image('hole.png'),
             'm': load_image('key.png'),
-            'e': load_image('door.png')}
+            'e': load_image('door.png'),
+            'i': load_image('door.png')}
+        if len(door):
+            self.images['e'] = load_image(door)
         for y in range(len(map)):
             for x in range(len(map[0])):
                 l = len(map[y])
@@ -127,6 +135,8 @@ class Board:
                     self.cell[x][y] = Tile(x, y, self.images['o'], side, 'o')
                 elif map[y][x] == 'm':
                     self.cell[x][y] = Tile(x, y, self.images['m'], side, 'm')
+                elif map[y][x] == 'i':
+                    self.cell[x][y] = Tile(x, y, self.images['i'], side, 'i')
                 elif map[y][x] == 'e':
                     self.cell[x][y] = Tile(x, y, self.images['e'], side, 'e')
                     self.exit_pos = (x, y)
@@ -137,10 +147,13 @@ class Board:
         self.HEIGHT_IN_CAGES = y - 1
 
     def move(self, x, y):
+        global not_is_exit
         pos = self.player.pos
         draw_pos = self.player.draw_pos
         if self.cell[pos[0] + x][pos[1] + y].sign == 'o':
             self.fall = True
+        elif self.cell[pos[0] + x][pos[1] + y].sign == 'i':
+            not_is_exit = ("Я отсюда пришёл.", 330)
         elif not self.cell[pos[0] + x][pos[1] + y].process(self.borders):
             # проверка на то, что лучше сместить: камеру или персонажа
             check_move = x or y
@@ -151,6 +164,8 @@ class Board:
                 self.player.move(x, y, 'player')
             else:
                 self.player.move(x, y, 'camera')
+        if not_is_exit and self.cell[pos[0] + x][pos[1] + y].sign != 'i':
+            not_is_exit = ('', 10)
 
 
 def terminate():
@@ -163,7 +178,7 @@ def check_door(door_is_open, cell_is_door):
 
 
 def game(WIDTH, HEIGHT):
-    global music_on
+    global music_on, players_keys, not_is_exit
     # инициализация окна
     pygame.init()
     size = WIDTH, HEIGHT
@@ -171,6 +186,7 @@ def game(WIDTH, HEIGHT):
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption('The Walls')
     pygame.mixer.music.load('data/music/main_music.wav')
+    final_sound = pygame.mixer.Sound("data/music/steps_sound.wav")
     if music_on:
         pygame.mixer.music.play(-1)
     # инициализация объектов
@@ -181,6 +197,7 @@ def game(WIDTH, HEIGHT):
     key_sound = pygame.mixer.Sound("data/music/take_key.wav")
     door_is_open = False
     door_opening_sound = pygame.mixer.Sound("data/music/opening_door.wav")
+    not_is_exit = ("", 50)
     # фокус на персонажа
     pos = board.player.pos
     dx = board.WIDTH_IN_CAGES - 8 if (n := (pos[0] - 4 if pos[0] - 4 > 0 else 0)) > board.WIDTH_IN_CAGES - 8 else n
@@ -205,24 +222,31 @@ def game(WIDTH, HEIGHT):
                 if event.type == pygame.QUIT:
                     return 0
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP and check_door(door_is_open,
+                    if not door_is_open and board.cell[player_pos[0] + 1][player_pos[1]].process(['e']):
+                        not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    if event.key == pygame.K_UP:
+                        if check_door(door_is_open,
                                                                board.cell[player_pos[0]][player_pos[1] - 1].process(
                                                                    ['e'])):
-                        board.move(0, -1)
-                    elif event.key == pygame.K_DOWN and check_door(door_is_open,
-                                                                   board.cell[player_pos[0]][player_pos[1] + 1].process(
-                                                                       ['e'])):
-                        board.move(0, 1)
-                    elif event.key == pygame.K_LEFT and check_door(door_is_open,
-                                                                   board.cell[player_pos[0] - 1][player_pos[1]].process(
-                                                                       ['e'])):
-                        board.move(-1, 0)
-                    elif event.key == pygame.K_RIGHT and check_door(door_is_open,
-                                                                    board.cell[player_pos[0] + 1][
-                                                                        player_pos[1]].process(
-                                                                        ['e'])):
-                        board.move(1, 0)
-
+                            board.move(0, -1)
+                        elif not door_is_open and board.cell[player_pos[0]][player_pos[1] - 1].process(
+                                                                   ['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    elif event.key == pygame.K_DOWN:
+                        if check_door(door_is_open, board.cell[player_pos[0]][player_pos[1] + 1].process(['e'])):
+                            board.move(0, 1)
+                        elif not door_is_open and board.cell[player_pos[0]][player_pos[1] + 1].process(['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    elif event.key == pygame.K_LEFT:
+                        if check_door(door_is_open, board.cell[player_pos[0] - 1][player_pos[1]].process(['e'])):
+                            board.move(-1, 0)
+                        elif not door_is_open and  board.cell[player_pos[0] - 1][player_pos[1]].process(['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                    elif event.key == pygame.K_RIGHT:
+                        if check_door(door_is_open, board.cell[player_pos[0] + 1][player_pos[1]].process(['e'])):
+                            board.move(1, 0)
+                        elif not door_is_open and board.cell[player_pos[0] + 1][player_pos[1]].process(['e']):
+                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
                     elif event.key == pygame.K_k:
                         if music_on:
                             pygame.mixer.music.stop()
@@ -306,6 +330,8 @@ def game(WIDTH, HEIGHT):
                 if music_on:
                     pygame.mixer.Sound.play(door_opening_sound)
                 board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open.png')
+                if len(door):
+                    board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open(exit).png')
 
         elif board.fall:
             if choice([1, 1, 0, 0, 0, 0, 0]):
@@ -332,10 +358,15 @@ def game(WIDTH, HEIGHT):
             font = pygame.font.Font(None, 25)
             text = font.render(str(players_keys), True, keys_color)
             screen.blit(text, (26, 5))
+            # строка сообщений
+            font_ms = pygame.font.Font(None, 25)
+            text_ms = font_ms.render(not_is_exit[0], True, (255, 0, 0))
+            screen.blit(text_ms, (not_is_exit[1], 5))
         elif game_position == 'mini_game':
             image = load_image('mini_game1.png')
             mgame_art = image.get_rect()
             screen.blit(image, mgame_art)
+
             for y in range(3):
                 for elem in range(3):
                     if board_mg[y][elem] == 'x':
@@ -351,12 +382,24 @@ def game(WIDTH, HEIGHT):
 
 
     pygame.mixer.music.stop()
-    if game_position == 'game_won':
+    if len(door) and game_position == 'game_won':
+        cast_count = 1
+        image = load_image(f'cast_scene{cast_count}.png')
+        position_art = image.get_rect()
+        pygame.mixer.music.load('data/music/game_won_music.wav')
+        if music_on:
+            game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
+
+    elif game_position == 'game_won':
         image = load_image('game_won.png')
         position_art = image.get_rect()
         pygame.mixer.music.load('data/music/game_won_music.wav')
         if music_on:
             game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
+        if level_completed[keys] not in progress:
+            progress.append(level_completed[keys])
+            with open('data/levels/progress.txt', mode='w') as progress_w:
+                progress_w.write(''.join(progress))
 
     elif game_position == 'game_over':
         image = load_image('game_over.png')
@@ -369,12 +412,15 @@ def game(WIDTH, HEIGHT):
         pygame.mixer.Sound.play(game_sound)
     running = True
     music_is_run = not music_on
+    timer = 0
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
+                    if len(door) and game_position == 'game_won':
+                        music_on = music_is_run
                     return 1
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_k:
@@ -388,10 +434,27 @@ def game(WIDTH, HEIGHT):
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, position_art)
         pygame.display.update()
-        if not music_is_run:
+        if not music_is_run and not len(door):
             sleep(0.9 if game_position == 'game_won' else 1.5)
             pygame.mixer.music.play(-1)
             music_is_run = True
+        if len(door) and game_position == 'game_won':
+            if music_on and not music_is_run:
+                music_is_run = True
+                pygame.mixer.music.load("data/music/final_music.wav")
+                pygame.mixer.Sound.play(final_sound)
+            if game_position == 'game_won' and timer == cast_count * 1500:
+                if cast_count != 3:
+                    cast_count += 1
+                image = load_image(f'cast_scene{cast_count}.png')
+                if cast_count == 2 and music_on:
+                    pygame.mixer.music.play(-1)
+                    music_on = False
+                elif cast_count == 2 and not music_on:
+                    music_is_run = False
+                position_art = image.get_rect()
+                timer = 0
+            timer += 1
     pygame.mixer.music.stop()
     return 0
 
@@ -399,6 +462,7 @@ def game(WIDTH, HEIGHT):
 def menu():
     global music_on
     global keys
+    global door
     # инициализация окна
     pygame.init()
     size = 700, 400
@@ -409,12 +473,14 @@ def menu():
     if music_on:
         pygame.mixer.music.play(-1)
     menu_art = image.get_rect()
+    image_1 = load_image('locked_level.png')
     button_up = Button(13, 432, 84, 50)
     button_down = Button(152, 432, 84, 50)
     running = True
     # работа с пользователем
     selection = 0
     position, helping = 'menu', 1
+    door = ''
     while running:
         for event in pygame.event.get():
             if position == 'menu':
@@ -427,17 +493,18 @@ def menu():
                             keys = keys_1
                             selection = level_1
                             running = False
-                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
+                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175 and '2' in progress:
                             keys = keys_2
                             selection = level_2
                             running = False
-                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262:
+                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262 and '3' in progress:
                             keys = keys_3
                             selection = level_3
                             running = False
-                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351:
+                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351 and '4' in progress:
                             keys = keys_4
                             selection = level_4
+                            door = 'door(exit).png'
                             running = False
                         elif 549 < event_pos[0] < 690 and 310 < event_pos[1] < 393:
                             position, helping = 'help', 1
@@ -448,15 +515,15 @@ def menu():
                         keys = keys_1
                         selection = level_1
                         running = False
-                    elif event.key == pygame.K_2:
+                    elif event.key == pygame.K_2 and 2 in progress:
                         keys = keys_2
                         selection = level_2
                         running = False
-                    elif event.key == pygame.K_3:
+                    elif event.key == pygame.K_3 and 3 in progress:
                         keys = keys_3
                         selection = level_3
                         running = False
-                    elif event.key == pygame.K_4:
+                    elif event.key == pygame.K_4 and 4 in progress:
                         keys = keys_4
                         selection = level_4
                         running = False
@@ -488,6 +555,9 @@ def menu():
         if position == 'menu':
             # отрисовка меню
             screen.blit(image, menu_art)
+            for lev in locked_levels:
+                if lev not in progress:
+                    screen.blit(image_1, (1, locked_levels[lev]))
         elif position == 'help':
             # отрисовка Помощи
             image2 = load_image(f"help_{helping}.png")
@@ -503,6 +573,7 @@ if __name__ == '__main__':
     global tiles
     global player
     _r = 1
+    not_is_exit = ('', 10)
     music_on = True
     while _r == 1:
         all_sprites = pygame.sprite.Group()
