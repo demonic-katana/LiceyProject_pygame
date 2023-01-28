@@ -93,6 +93,7 @@ class Player(pygame.sprite.Sprite):
         if self.flips == 11:
             self.flips = 0
 
+
 class Camera:
     def __init__(self):
         self.dx = 0
@@ -226,11 +227,11 @@ def game(WIDTH, HEIGHT):
                         not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
                     if event.key == pygame.K_UP:
                         if check_door(door_is_open,
-                                                               board.cell[player_pos[0]][player_pos[1] - 1].process(
-                                                                   ['e'])):
+                                      board.cell[player_pos[0]][player_pos[1] - 1].process(
+                                          ['e'])):
                             board.move(0, -1)
                         elif not door_is_open and board.cell[player_pos[0]][player_pos[1] - 1].process(
-                                                                   ['e']):
+                                ['e']):
                             not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
                     elif event.key == pygame.K_DOWN:
                         if check_door(door_is_open, board.cell[player_pos[0]][player_pos[1] + 1].process(['e'])):
@@ -240,7 +241,7 @@ def game(WIDTH, HEIGHT):
                     elif event.key == pygame.K_LEFT:
                         if check_door(door_is_open, board.cell[player_pos[0] - 1][player_pos[1]].process(['e'])):
                             board.move(-1, 0)
-                        elif not door_is_open and  board.cell[player_pos[0] - 1][player_pos[1]].process(['e']):
+                        elif not door_is_open and board.cell[player_pos[0] - 1][player_pos[1]].process(['e']):
                             not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
                     elif event.key == pygame.K_RIGHT:
                         if check_door(door_is_open, board.cell[player_pos[0] + 1][player_pos[1]].process(['e'])):
@@ -315,7 +316,6 @@ def game(WIDTH, HEIGHT):
                             if game_position == 'game_on':
                                 board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
 
-
         player_pos = board.player.pos
 
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
@@ -379,7 +379,6 @@ def game(WIDTH, HEIGHT):
         pygame.display.flip()
         player.update()
         clock.tick(20)
-
 
     pygame.mixer.music.stop()
     if len(door) and game_position == 'game_won':
@@ -493,15 +492,15 @@ def menu():
                             keys = keys_1
                             selection = level_1
                             running = False
-                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175 and '2' in progress:
+                        elif 1 < event_pos[0] < 142 and 92 < event_pos[1] < 175:
                             keys = keys_2
                             selection = level_2
                             running = False
-                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262 and '3' in progress:
+                        elif 1 < event_pos[0] < 142 and 180 < event_pos[1] < 262:
                             keys = keys_3
                             selection = level_3
                             running = False
-                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351 and '4' in progress:
+                        elif 1 < event_pos[0] < 142 and 267 < event_pos[1] < 351:
                             keys = keys_4
                             selection = level_4
                             door = 'door(exit).png'
@@ -515,15 +514,15 @@ def menu():
                         keys = keys_1
                         selection = level_1
                         running = False
-                    elif event.key == pygame.K_2 and 2 in progress:
+                    elif event.key == pygame.K_2 and '2' in progress:
                         keys = keys_2
                         selection = level_2
                         running = False
-                    elif event.key == pygame.K_3 and 3 in progress:
+                    elif event.key == pygame.K_3 and '3' in progress:
                         keys = keys_3
                         selection = level_3
                         running = False
-                    elif event.key == pygame.K_4 and 4 in progress:
+                    elif event.key == pygame.K_4 and '4' in progress:
                         keys = keys_4
                         selection = level_4
                         running = False
