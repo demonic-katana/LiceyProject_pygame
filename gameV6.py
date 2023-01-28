@@ -111,7 +111,7 @@ class Camera:
 class Board:
     def __init__(self, side, map):
         self.cell = [[0] * HEIGHT for i in range(WIDTH)]
-        self.borders = ['#', 'i']
+        self.borders = ['#']
         self.fall = False
         # механизм добавки ячеек, через которые нельзя проходить / пока нету /
         self.exit_pos = (0, 0)
@@ -433,7 +433,7 @@ def game(WIDTH, HEIGHT):
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, position_art)
         pygame.display.update()
-        if not music_is_run and not len(door):
+        if not music_is_run and (not len(door) or game_position == 'game_over'):
             sleep(0.9 if game_position == 'game_won' else 1.5)
             pygame.mixer.music.play(-1)
             music_is_run = True
