@@ -3,6 +3,7 @@ import sys
 import pygame
 from random import choice
 from time import sleep
+import schedule
 
 
 def load_image(name, color_key=None):
@@ -145,7 +146,7 @@ class Board:
         if self.cell[pos[0] + x][pos[1] + y].sign == 'o':
             self.fall = True
         elif self.cell[pos[0] + x][pos[1] + y].sign == 'i':
-            not_is_exit = ("Я отсюда пришёл.", 330)
+            not_is_exit = ("Я отсюда пришёл.", 180)
         elif not self.cell[pos[0] + x][pos[1] + y].process(self.borders):
             # проверка на то, что лучше сместить: камеру или персонажа
             check_move = x or y
@@ -169,8 +170,13 @@ def check_door(door_is_open, cell_is_door):
     return (not cell_is_door) or (door_is_open and cell_is_door)
 
 
+def game_timer():
+    global game_time
+    game_time += 1
+
+
 def game(WIDTH, HEIGHT):
-    global music_on, players_keys, not_is_exit
+    global music_on, players_keys, not_is_exit, game_time
     # инициализация окна
     pygame.init()
     size = WIDTH, HEIGHT
@@ -183,6 +189,7 @@ def game(WIDTH, HEIGHT):
         pygame.mixer.music.play(-1)
     # инициализация объектов
     board = Board(50, _map)
+    game_time = 0
     # счётчик ключей
     players_keys = 0
     keys_color = (255, 0, 0)
@@ -211,6 +218,8 @@ def game(WIDTH, HEIGHT):
     dark = pygame.Surface((WIDTH, HEIGHT)).convert_alpha()
     while running or opening:
         player_pos = board.player.pos
+        if running:
+            schedule.run_pending()
         for event in pygame.event.get():
             if running:
                 if game_position == 'game_on':
@@ -226,7 +235,7 @@ def game(WIDTH, HEIGHT):
                                 board.move(*move_dct[e])
                             elif not door_is_open and board.cell[player_pos[0] + move_dct[e][0]][
                                 player_pos[1] + move_dct[e][1]].process(['e']):
-                                not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                                not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 100)
                         elif event.key == pygame.K_k:
                             if music_on:
                                 pygame.mixer.music.stop()
@@ -276,9 +285,13 @@ def game(WIDTH, HEIGHT):
             image = load_image('keys_counter.png')
             position_art = image.get_rect()
             screen.blit(image, position_art)
-            font = pygame.font.Font(None, 25)
+            font = pygame.font.SysFont('Ariel', 25)
             text = font.render(str(players_keys), True, keys_color)
             screen.blit(text, (26, 5))
+            # отрисовка времени игры
+            font = pygame.font.SysFont('Ariel', 25)
+            text = font.render(f'{game_time//60}:{game_time%60:0>2}', True, keys_color)
+            screen.blit(text, (460, 5))
             # строка сообщений
             font_ms = pygame.font.Font(None, 25)
             text_ms = font_ms.render(not_is_exit[0], True, (255, 0, 0))
@@ -298,7 +311,6 @@ def game(WIDTH, HEIGHT):
         pygame.mixer.music.set_volume(1)
         player.update()
         clock.tick(20 if running else 50)
-
     pygame.mixer.music.stop()
 
     if len(door) and game_position == 'game_won':
@@ -352,6 +364,11 @@ def game(WIDTH, HEIGHT):
         # отрисовка экрана исходя из позиции игры
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, position_art)
+        # отрисовка времени игры
+        if game_position == 'game_won':
+            font = pygame.font.SysFont("Comic Sans MS", 30)
+            text = font.render(f'Время прохождения - {game_time//60}:{game_time%60:0>2}', True, 'white')
+            screen.blit(text, (55, 400))
         pygame.display.update()
         if not music_is_run and (not len(door) or game_position == 'game_over'):
             sleep(0.9 if game_position == 'game_won' else 1.5)
@@ -587,6 +604,8 @@ if __name__ == '__main__':
     _r = 1
     not_is_exit = ('', 10)
     music_on = True
+    game_time = 0
+    schedule.every().second.do(game_timer)
     while _r == 1:
         all_sprites = pygame.sprite.Group()
         tiles = pygame.sprite.Group()
