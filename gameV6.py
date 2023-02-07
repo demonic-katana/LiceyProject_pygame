@@ -204,37 +204,40 @@ def game(WIDTH, HEIGHT):
                                                            board.player.side * board.player.draw_pos[1] + 5)
     # игровой цикл / игра началась
     game_position = 'game_on'
-    running = True
-    # настройки мини-игры
-    board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
-    while running:
+    running = False
+    # параметры для затемнения окна
+    opening = True
+    darken_percent = 0.99
+    dark = pygame.Surface((WIDTH, HEIGHT)).convert_alpha()
+    while running or opening:
         player_pos = board.player.pos
         for event in pygame.event.get():
-            if game_position == 'game_on':
-                if event.type == pygame.QUIT:
-                    return 0
-                elif event.type == pygame.KEYDOWN:
-                    move_dct = {pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1),
-                                pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0)}
-                    if event.key in move_dct:
-                        e = event.key
-                        if check_door(door_is_open, board.cell[player_pos[0] + move_dct[e][0]][
-                            player_pos[1] + move_dct[e][1]].process(['e'])):
-                            board.move(*move_dct[e])
-                        elif not door_is_open and board.cell[player_pos[0] + move_dct[e][0]][
-                            player_pos[1] + move_dct[e][1]].process(['e']):
-                            not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
-                    elif event.key == pygame.K_k:
-                        if music_on:
-                            pygame.mixer.music.stop()
-                            music_on = False
-                        else:
-                            pygame.mixer.music.play()
-                            music_on = True
-                    elif event.key == pygame.K_ESCAPE:
-                        return 1
-            elif game_position == 'mini_game':
-                board, screen, game_position, running = mini_game(board, screen, game_position)
+            if running:
+                if game_position == 'game_on':
+                    if event.type == pygame.QUIT:
+                        return 0
+                    elif event.type == pygame.KEYDOWN:
+                        move_dct = {pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1),
+                                    pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0)}
+                        if event.key in move_dct:
+                            e = event.key
+                            if check_door(door_is_open, board.cell[player_pos[0] + move_dct[e][0]][
+                                player_pos[1] + move_dct[e][1]].process(['e'])):
+                                board.move(*move_dct[e])
+                            elif not door_is_open and board.cell[player_pos[0] + move_dct[e][0]][
+                                player_pos[1] + move_dct[e][1]].process(['e']):
+                                not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 170)
+                        elif event.key == pygame.K_k:
+                            if music_on:
+                                pygame.mixer.music.stop()
+                                music_on = False
+                            else:
+                                pygame.mixer.music.play()
+                                music_on = True
+                        elif event.key == pygame.K_ESCAPE:
+                            return 1
+                elif game_position == 'mini_game':
+                    board, screen, game_position, running = mini_game(board, screen, game_position)
 
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
             board.cell[player_pos[0]][player_pos[1]].image = board.images['.']
@@ -280,12 +283,24 @@ def game(WIDTH, HEIGHT):
             font_ms = pygame.font.Font(None, 25)
             text_ms = font_ms.render(not_is_exit[0], True, (255, 0, 0))
             screen.blit(text_ms, (not_is_exit[1], 5))
+        # затемнение окна
+        if opening:
+            darken_percent = round(darken_percent - 0.01, 2)
+            dark.fill((0, 0, 0, darken_percent * 255))
+            screen.blit(dark, (0, 0))
+            if music_on:
+                pygame.mixer.music.set_volume(1 - darken_percent)
+            if darken_percent == 0:
+                running = True
+                opening = False
 
         pygame.display.flip()
+        pygame.mixer.music.set_volume(1)
         player.update()
-        clock.tick(20)
+        clock.tick(20 if running else 50)
 
     pygame.mixer.music.stop()
+
     if len(door) and game_position == 'game_won':
         cast_count = 1
         image = load_image(f'cast_scene{cast_count}.png')
@@ -364,6 +379,7 @@ def game(WIDTH, HEIGHT):
 
 def mini_game(board, screen, game_position):
     global music_on
+    # настройки мини-игры
     board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
     running = True
     while game_position == 'mini_game':
@@ -455,6 +471,7 @@ def menu():
     # инициализация окна
     pygame.init()
     size = 700, 400
+    clock = pygame.time.Clock()
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption('The Walls')
     image = load_image('start.bmp')
@@ -465,66 +482,73 @@ def menu():
     image_1 = load_image('locked_level.png')
     button_up = Button(13, 432, 84, 50)
     button_down = Button(152, 432, 84, 50)
-    running = True
+    running = False
     # работа с пользователем
     selection = 0
     position, helping = 'menu', 1
     door = ''
-    while running:
+    # параметры для затемнения окна
+    closed = False
+    opening = True
+    darken_percent = 0.99
+    dark = pygame.Surface(image.get_size()).convert_alpha()
+    while running or not closed:
         for event in pygame.event.get():
-            if position == 'menu':
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        event_pos = event.pos
-                        keys, selection = 0, 0
-                        e = event_pos[1]
-                        level = [n for i, j, n in
-                                 [(3, 87, 1), (93, 175, 2), (181, 262, 3), (268, 351, 4), (e, e + 1, None)] if
-                                 e in range(i, j)][0]
-                        if 1 < event_pos[0] < 142 and (str(level) in progress or level == 1):
-                            keys = eval(f'keys_{level}')
-                            selection = eval(f'level_{level}')
-                            running = False
-                            if level == 4:
-                                door = 'door(exit).png'
-                        elif 549 < event_pos[0] < 690 and 310 < event_pos[1] < 393:
-                            position, helping = 'help', 1
-                            screen = pygame.display.set_mode((500, 500))
-
-                elif event.type == pygame.KEYDOWN:
-                    pygame_keys = {pygame.K_1: '1', pygame.K_2: '2', pygame.K_3: '3', pygame.K_4: '4'}
-                    if event.key in pygame_keys and (pygame_keys[event.key] in progress or event.key == pygame.K_1):
-                        keys = eval(f'keys_{pygame_keys[event.key]}')
-                        selection = eval(f'level_{pygame_keys[event.key]}')
+            if running:
+                if position == 'menu':
+                    if event.type == pygame.QUIT:
                         running = False
-                        if pygame_keys[event.key] == '4':
-                            door = 'door(exit).png'
-                    elif event.key == pygame.K_k:
-                        if music_on:
-                            pygame.mixer.music.stop()
-                            music_on = False
-                        else:
-                            pygame.mixer.music.play(-1)
-                            music_on = True
+                        closed = True
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:
+                            event_pos = event.pos
+                            keys, selection = 0, 0
+                            e = event_pos[1]
+                            level = [n for i, j, n in
+                                     [(3, 87, 1), (93, 175, 2), (181, 262, 3), (268, 351, 4), (e, e + 1, None)] if
+                                     e in range(i, j)][0]
+                            if 1 < event_pos[0] < 142 and (str(level) in progress or level == 1):
+                                keys = eval(f'keys_{level}')
+                                selection = eval(f'level_{level}')
+                                running = False
+                                if level == 4:
+                                    door = 'door(exit).png'
+                            elif 549 < event_pos[0] < 690 and 310 < event_pos[1] < 393:
+                                position, helping = 'help', 1
+                                screen = pygame.display.set_mode((500, 500))
 
-            elif position == 'help':
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        event_pos = event.pos
-                        if button_up.intersection(event_pos):
-                            helping = button_up.next(-1, helping)
-                        elif button_down.intersection(event_pos):
-                            helping = button_down.next(1, helping)
-                        elif 4 < event_pos[0] < 85 and 10 < event_pos[1] < 84:
-                            position = 'menu'
-                            screen = pygame.display.set_mode(size)
+                    elif event.type == pygame.KEYDOWN:
+                        pygame_keys = {pygame.K_1: '1', pygame.K_2: '2', pygame.K_3: '3', pygame.K_4: '4'}
+                        if event.key in pygame_keys and (pygame_keys[event.key] in progress or event.key == pygame.K_1):
+                            keys = eval(f'keys_{pygame_keys[event.key]}')
+                            selection = eval(f'level_{pygame_keys[event.key]}')
+                            running = False
+                            if pygame_keys[event.key] == '4':
+                                door = 'door(exit).png'
+                        elif event.key == pygame.K_k:
+                            if music_on:
+                                pygame.mixer.music.stop()
+                                music_on = False
+                            else:
+                                pygame.mixer.music.play(-1)
+                                music_on = True
 
-            else:
-                terminate()
+                elif position == 'help':
+                    if event.type == pygame.QUIT:
+                        running = False
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:
+                            event_pos = event.pos
+                            if button_up.intersection(event_pos):
+                                helping = button_up.next(-1, helping)
+                            elif button_down.intersection(event_pos):
+                                helping = button_down.next(1, helping)
+                            elif 4 < event_pos[0] < 85 and 10 < event_pos[1] < 84:
+                                position = 'menu'
+                                screen = pygame.display.set_mode(size)
+
+                else:
+                    terminate()
         screen.fill(pygame.Color(0, 0, 0))
         if position == 'menu':
             # отрисовка меню
@@ -537,7 +561,21 @@ def menu():
             image2 = load_image(f"help_{helping}.png")
             help_art = image2.get_rect()
             screen.blit(image2, help_art)
+        # затемнение окна
+        if not running:
+            darken_percent = round(darken_percent - 0.01, 2) if opening else round(darken_percent + 0.01, 2)
+            dark.fill((0, 0, 0, darken_percent * 255))
+            screen.blit(dark, (0, 0))
+            if music_on:
+                pygame.mixer.music.set_volume(1 - darken_percent)
+            if darken_percent == 1:
+                closed = True
+            elif darken_percent == 0:
+                running = True
+                opening = False
+
         pygame.display.update()
+        clock.tick(50)
     pygame.mixer.music.stop()
     return selection
 
