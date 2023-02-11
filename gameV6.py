@@ -1,5 +1,6 @@
 ﻿import os
 import sys
+from datetime import datetime
 import pygame
 from random import choice
 from time import sleep
@@ -23,8 +24,8 @@ def load_image(name, color_key=None):
 
 
 def save():
-    for i in range(1, 5):
-        cur.execute(f"""Update main set level_{i} = {i if i in progress else 0} where id = 1""")
+    for i in range(0, 4):
+        cur.execute(f"""Update main set level_{i + 1} = '{progress[i]}' where id = 1""")
         con.commit()
 
 
@@ -32,7 +33,7 @@ WIDTH, HEIGHT = 500, 500
 level_completed = {}
 for n in range(1, 5):
     exec(f'keys_{n} = {n * 5}')
-    level_completed[eval(f'keys_{n}')] = str(n + 1) if n + 1 < 4 else 'w'
+    level_completed[eval(f'keys_{n}')] = n
     exec(
         f"level_{n} = list(map(str.strip, open(f'data/levels/level_0{n}.map', mode='r', encoding='utf8').readlines()))")
 locked_levels = {'2': 92, '3': 180, '4': 267}
@@ -65,7 +66,7 @@ class Button:
 
     def next(self, step, value):
         temp = value + step
-        return temp if (0 < temp < 4) else value
+        return temp if (0 < temp < 5) else value
 
 
 class Player(pygame.sprite.Sprite):
@@ -222,9 +223,11 @@ def game(WIDTH, HEIGHT):
     opening = True
     darken_percent = 0.99
     dark = pygame.Surface((WIDTH, HEIGHT)).convert_alpha()
+    # пауза
+    pause = False
     while running or opening:
         player_pos = board.player.pos
-        if running:
+        if running and not pause:
             schedule.run_pending()
         for event in pygame.event.get():
             if running:
@@ -234,7 +237,7 @@ def game(WIDTH, HEIGHT):
                     elif event.type == pygame.KEYDOWN:
                         move_dct = {pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1),
                                     pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0)}
-                        if event.key in move_dct:
+                        if event.key in move_dct  and not pause:
                             e = event.key
                             if check_door(door_is_open, board.cell[player_pos[0] + move_dct[e][0]][
                                 player_pos[1] + move_dct[e][1]].process(['e'])):
@@ -247,10 +250,12 @@ def game(WIDTH, HEIGHT):
                                 pygame.mixer.music.stop()
                                 music_on = False
                             else:
-                                pygame.mixer.music.play()
+                                pygame.mixer.music.play(-1)
                                 music_on = True
                         elif event.key == pygame.K_ESCAPE:
                             return 1
+                        elif event.key == pygame.K_SPACE:
+                            pause = not pause
                 elif game_position == 'mini_game':
                     board, screen, game_position, running = mini_game(board, screen, game_position)
 
@@ -295,13 +300,24 @@ def game(WIDTH, HEIGHT):
             text = font.render(str(players_keys), True, keys_color)
             screen.blit(text, (26, 5))
             # отрисовка времени игры
-            font = pygame.font.SysFont('Ariel', 25)
             text = font.render(f'{game_time // 60}:{game_time % 60:0>2}', True, keys_color)
             screen.blit(text, (460, 5))
             # строка сообщений
             font_ms = pygame.font.Font(None, 25)
             text_ms = font_ms.render(not_is_exit[0], True, (255, 0, 0))
             screen.blit(text_ms, (not_is_exit[1], 5))
+            # отрисовка паузы (если игра приостановлена)
+            if pause:
+                dark.fill((0, 0, 0, 0.5 * 255))
+                screen.blit(dark, (0, 0))
+                image = load_image('pause.png')
+                position_art = image.get_rect()
+                screen.blit(image, (220, 220))
+                n = 0
+                for i in ['Нажмине "пробел", чтобы продолжить.', 'Нажмине "escape", чтобы выйти.']:
+                    text = font.render(i, True, 'white')
+                    screen.blit(text, (90 + n * 25, 300 + n * 25))
+                    n += 1
         # затемнение окна
         if opening:
             darken_percent = round(darken_percent - 0.01, 2)
@@ -312,10 +328,10 @@ def game(WIDTH, HEIGHT):
             if darken_percent == 0:
                 running = True
                 opening = False
-
         pygame.display.flip()
         pygame.mixer.music.set_volume(1)
-        player.update()
+        if not pause:
+            player.update()
         clock.tick(20 if running else 50)
     pygame.mixer.music.stop()
 
@@ -331,10 +347,12 @@ def game(WIDTH, HEIGHT):
         image = load_image('game_won.png')
         position_art = image.get_rect()
         pygame.mixer.music.load('data/music/game_won_music.wav')
+        game_time_str = f'{game_time // 60}:{game_time % 60:0>2}'
         if music_on:
             game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
-        if level_completed[keys] not in progress:
-            progress.append(int(level_completed[keys]))
+        if progress[level_completed[keys] - 1] == '∞' or \
+                datetime.strptime(game_time_str, '%M:%S') < datetime.strptime(game_time_str, '%M:%S'):
+            progress.insert(level_completed[keys] - 1, game_time_str)
             save()
 
     elif game_position == 'game_over':
@@ -359,7 +377,11 @@ def game(WIDTH, HEIGHT):
                         music_on = music_is_run
                     return 1
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_k:
+                if event.key in [pygame.K_SPACE, pygame.K_KP_ENTER, pygame.K_RETURN]:
+                    if len(door) and game_position == 'game_won':
+                        music_on = music_is_run
+                    return 1
+                elif event.key == pygame.K_k:
                     if music_on:
                         pygame.mixer.music.stop()
                     else:
@@ -492,7 +514,6 @@ def menu():
     global con
     global cur
     global progress
-    progress = []
     # Инициализация данных / progress.wsdb
     try:
         f = open('data/levels/progress.wsdb', mode='r')
@@ -505,12 +526,12 @@ def menu():
         cur.execute("""CREATE TABLE main (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name STRING,
-                level_1 BOOLEAN DEFAULT 1,
-                level_2 BOOLEAN DEFAULT 0,
-                level_3 BOOLEAN DEFAULT 0,
-                level_4 BOOLEAN DEFAULT 0
+                level_1 STRING DEFAULT '∞',
+                level_2 STRING DEFAULT '∞',
+                level_3 STRING DEFAULT '∞',
+                level_4 STRING DEFAULT '∞'
             )""")
-        cur.execute("""INSERT INTO main (id, name, level_1) VALUES(1, 'player', 1)""")
+        cur.execute("""INSERT INTO main (id, name) VALUES(1, 'player')""")
         con.commit()
     f.close()
     progress = list(cur.execute("""Select level_1, level_2, level_3, level_4 from main""").fetchone())
@@ -537,7 +558,7 @@ def menu():
     closed = False
     opening = True
     darken_percent = 0.99
-    dark = pygame.Surface(image.get_size()).convert_alpha()
+    dark = pygame.Surface((700, 500)).convert_alpha()
     while running or not closed:
         for event in pygame.event.get():
             if running:
@@ -550,17 +571,18 @@ def menu():
                             event_pos = event.pos
                             keys, selection = 0, 0
                             e = event_pos[1]
+                            opened_levels = [i + 1 if i == 0 or progress[i - 1] != '∞' else 0 for i in range(4)]
                             level = [n for i, j, n in
                                      [(3, 87, 1), (93, 175, 2), (181, 262, 3), (268, 351, 4), (e, e + 1, None)] if
                                      e in range(i, j)][0]
-                            if 1 < event_pos[0] < 142 and (level in progress or level == 1):
+                            if 1 < event_pos[0] < 142 and (level in opened_levels or level == 1):
                                 keys = eval(f'keys_{level}')
                                 selection = eval(f'level_{level}')
                                 running = False
                                 if level == 4:
                                     door = 'door(exit).png'
                             elif 553 < event_pos[0] < 694 and 2 < event_pos[1] < 87:
-                                progress = [1]
+                                progress = ['∞'] * 4
                                 save()
                                 return 1
                             elif 549 < event_pos[0] < 690 and 310 < event_pos[1] < 393:
@@ -568,8 +590,8 @@ def menu():
                                 screen = pygame.display.set_mode((500, 500))
 
                     elif event.type == pygame.KEYDOWN:
-                        pygame_keys = {pygame.K_1: '1', pygame.K_2: '2', pygame.K_3: '3', pygame.K_4: '4'}
-                        if event.key in pygame_keys and (pygame_keys[event.key] in progress or event.key == pygame.K_1):
+                        pygame_keys = {pygame.K_1: 1, pygame.K_2: 2, pygame.K_3: 3, pygame.K_4: 4}
+                        if event.key in pygame_keys and pygame_keys[event.key] in progress:
                             keys = eval(f'keys_{pygame_keys[event.key]}')
                             selection = eval(f'level_{pygame_keys[event.key]}')
                             running = False
@@ -603,14 +625,23 @@ def menu():
         if position == 'menu':
             # отрисовка меню
             screen.blit(image, menu_art)
+            opened_levels = [i + 1 if i == 0 or progress[i - 1] != '∞' else 0 for i in range(4)]
             for lev in locked_levels:
-                if int(lev) not in progress:
+                if int(lev) not in opened_levels:
                     screen.blit(image_1, (1, locked_levels[lev]))
         elif position == 'help':
             # отрисовка Помощи
             image2 = load_image(f"help_{helping}.png")
             help_art = image2.get_rect()
             screen.blit(image2, help_art)
+            if helping == 4:
+                n = 0
+                time_not = [164, 179, 203, 226]
+                for i in progress:
+                    font = pygame.font.SysFont("Courier New", 36 if i == '∞' else 20, bold=True)
+                    text = font.render(i, True, 'black')
+                    screen.blit(text, (189, time_not[n] if i == '∞' else 164 + n * 23))
+                    n += 1
         # затемнение окна
         if not running:
             darken_percent = round(darken_percent - 0.01, 2) if opening else round(darken_percent + 0.01, 2)
@@ -646,6 +677,6 @@ if __name__ == '__main__':
         keys_counter = pygame.sprite.Group()
         _r = menu()
         _map = _r
-        if type(_r) is not int:
+        if not isinstance(_r, int):
             camera = Camera()
             _r = game(500, 500)
