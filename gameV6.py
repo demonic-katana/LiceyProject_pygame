@@ -252,10 +252,14 @@ def game(WIDTH, HEIGHT):
                                 pygame.mixer.music.play()
                                 music_on = True
                         elif event.key == pygame.K_ESCAPE:
+                            pygame.mixer.music.stop()
                             return 1
                         elif event.key == pygame.K_SPACE:
                             pause = not pause
                             pygame.mixer.music.set_volume(0.5 if pause else 1)
+                        elif event.key == pygame.K_r:
+                            pygame.mixer.music.stop()
+                            return _map
                 elif game_position == 'mini_game':
                     board, screen, game_position, running = mini_game(board, screen, game_position)
 
@@ -301,7 +305,7 @@ def game(WIDTH, HEIGHT):
             screen.blit(text, (26, 5))
             # отрисовка времени игры
             text = font.render(f'{game_time // 60}:{game_time % 60:0>2}', True, keys_color)
-            screen.blit(text, (460, 5))
+            screen.blit(text, (460 - 10 * (len(str(game_time // 60)) - 1), 5))
             # строка сообщений
             font_ms = pygame.font.Font(None, 25)
             text_ms = font_ms.render(not_is_exit[0], True, (255, 0, 0))
@@ -345,9 +349,13 @@ def game(WIDTH, HEIGHT):
         cast_count = 1
         image = load_image(f'cast_scene{cast_count}.png')
         position_art = image.get_rect()
-        pygame.mixer.music.load('data/music/game_won_music.wav')
+        game_time_str = f'{game_time // 60}:{game_time % 60:0>2}'
         if music_on:
             game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
+        if progress[level_completed[keys] - 1] == '∞' or \
+                datetime.strptime(game_time_str, '%M:%S') < datetime.strptime(progress[level_completed[keys] - 1], '%M:%S'):
+            progress[level_completed[keys] - 1] = game_time_str
+            save()
 
     elif game_position == 'game_won':
         image = load_image('game_won.png')
@@ -379,13 +387,13 @@ def game(WIDTH, HEIGHT):
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    if len(door) and game_position == 'game_won':
+                    if door and game_position == 'game_won':
                         music_on = music_is_run
                     pygame.mixer.music.stop()
                     return 1
             elif event.type == pygame.KEYDOWN:
                 if event.key in [pygame.K_SPACE, pygame.K_KP_ENTER, pygame.K_RETURN]:
-                    if len(door) and game_position == 'game_won':
+                    if door and game_position == 'game_won':
                         music_on = music_is_run
                     pygame.mixer.music.stop()
                     return 1
@@ -395,32 +403,35 @@ def game(WIDTH, HEIGHT):
                     else:
                         pygame.mixer.music.play()
                     music_on = not music_on
+                elif event.key == pygame.K_r:
+                    pygame.mixer.music.stop()
+                    return _map
         # отрисовка экрана исходя из позиции игры
         screen.fill(pygame.Color(0, 0, 0))
         screen.blit(image, position_art)
         # отрисовка времени игры
-        if game_position == 'game_won':
+        if game_position == 'game_won' and not door:
             font = pygame.font.SysFont("Comic Sans MS", 30)
             text = font.render(f'Время прохождения - {game_time // 60}:{game_time % 60:0>2}', True, 'white')
             screen.blit(text, (55, 400))
         pygame.display.update()
-        if not music_is_run and (not len(door) or game_position == 'game_over'):
+        if not music_is_run and (not door or game_position == 'game_over'):
             sleep(0.9 if game_position == 'game_won' else 1.5)
             pygame.mixer.music.play(-1)
             music_is_run = True
-        if len(door) and game_position == 'game_won':
+        if door and game_position == 'game_won':
             if music_on and not music_is_run:
                 music_is_run = True
                 pygame.mixer.music.load("data/music/final_music.wav")
                 pygame.mixer.Sound.play(final_sound)
-            if game_position == 'game_won' and timer == cast_count * 1500:
-                if cast_count != 3:
+            if game_position == 'game_won' and timer == cast_count * 1600:
+                if cast_count != 4:
                     cast_count += 1
                 image = load_image(f'cast_scene{cast_count}.png')
-                if cast_count == 2 and music_on:
+                if cast_count == 3 and music_on:
                     pygame.mixer.music.play(-1)
                     music_on = False
-                elif cast_count == 2 and not music_on:
+                elif cast_count == 3 and not music_on:
                     music_is_run = False
                 position_art = image.get_rect()
                 timer = 0
@@ -606,7 +617,7 @@ def menu():
                             keys = eval(f'keys_{pygame_keys[event.key]}')
                             selection = eval(f'level_{pygame_keys[event.key]}')
                             running = False
-                            if pygame_keys[event.key] == '4':
+                            if pygame_keys[event.key] == 4:
                                 door = 'door(exit).png'
                         elif event.key == pygame.K_k:
                             if music_on:
@@ -669,8 +680,6 @@ def menu():
             pygame.mixer.music.load('data/music/main music/' + lst_of_track[running_track])
             if music_on:
                 pygame.mixer.music.play()
-
-
         pygame.display.update()
         clock.tick(50)
     pygame.mixer.music.stop()
@@ -686,13 +695,14 @@ if __name__ == '__main__':
     music_on = True
     game_time = 0
     schedule.every().second.do(game_timer)
-    while _r == 1:
+    while _r:
         all_sprites = pygame.sprite.Group()
         tiles = pygame.sprite.Group()
         player = pygame.sprite.Group()
         keys_counter = pygame.sprite.Group()
-        _r = menu()
-        _map = _r
+        if isinstance(_r, int):
+            _r = menu()
+            _map = _r
         if not isinstance(_r, int):
             camera = Camera()
             _r = game(500, 500)
