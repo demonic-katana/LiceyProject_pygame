@@ -190,10 +190,9 @@ def game(WIDTH, HEIGHT):
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption('The Walls')
-    pygame.mixer.music.load('data/music/main_music.wav')
+    lst_of_track = os.listdir('data/music/game music')
+    running_track = -1
     final_sound = pygame.mixer.Sound("data/music/steps_sound.wav")
-    if music_on:
-        pygame.mixer.music.play(-1)
     # инициализация объектов
     board = Board(50, _map)
     game_time = 0
@@ -250,12 +249,13 @@ def game(WIDTH, HEIGHT):
                                 pygame.mixer.music.stop()
                                 music_on = False
                             else:
-                                pygame.mixer.music.play(-1)
+                                pygame.mixer.music.play()
                                 music_on = True
                         elif event.key == pygame.K_ESCAPE:
                             return 1
                         elif event.key == pygame.K_SPACE:
                             pause = not pause
+                            pygame.mixer.music.set_volume(0.5 if pause else 1)
                 elif game_position == 'mini_game':
                     board, screen, game_position, running = mini_game(board, screen, game_position)
 
@@ -328,11 +328,17 @@ def game(WIDTH, HEIGHT):
             if darken_percent == 0:
                 running = True
                 opening = False
+        if music_on and not pygame.mixer.music.get_busy():
+            running_track = (running_track + 1) % len(lst_of_track)
+            pygame.mixer.music.load('data/music/game music/' + lst_of_track[running_track])
+            if music_on:
+                pygame.mixer.music.play()
+
         pygame.display.flip()
-        pygame.mixer.music.set_volume(1)
         if not pause:
             player.update()
         clock.tick(20 if running else 50)
+    pygame.mixer.music.set_volume(1)
     pygame.mixer.music.stop()
 
     if len(door) and game_position == 'game_won':
@@ -375,17 +381,19 @@ def game(WIDTH, HEIGHT):
                 if event.button == 1:
                     if len(door) and game_position == 'game_won':
                         music_on = music_is_run
+                    pygame.mixer.music.stop()
                     return 1
             elif event.type == pygame.KEYDOWN:
                 if event.key in [pygame.K_SPACE, pygame.K_KP_ENTER, pygame.K_RETURN]:
                     if len(door) and game_position == 'game_won':
                         music_on = music_is_run
+                    pygame.mixer.music.stop()
                     return 1
                 elif event.key == pygame.K_k:
                     if music_on:
                         pygame.mixer.music.stop()
                     else:
-                        pygame.mixer.music.play(-1)
+                        pygame.mixer.music.play()
                     music_on = not music_on
         # отрисовка экрана исходя из позиции игры
         screen.fill(pygame.Color(0, 0, 0))
@@ -425,6 +433,7 @@ def mini_game(board, screen, game_position):
     global music_on
     # настройки мини-игры
     board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
+    pygame.mixer.music.set_volume(0.5)
     running = True
     while game_position == 'mini_game':
         board.fall = False
@@ -504,6 +513,7 @@ def mini_game(board, screen, game_position):
                 elif board_mg[y][elem] == 'o':
                     pygame.draw.circle(screen, pygame.Color(128, 128, 128), (77 + 89 * elem, 150 + 89 * y), 32, 6)
         pygame.display.flip()
+    pygame.mixer.music.set_volume(1)
     return board, screen, game_position, running
 
 
@@ -514,6 +524,7 @@ def menu():
     global con
     global cur
     global progress
+    global opened_levels
     # Инициализация данных / progress.wsdb
     try:
         f = open('data/levels/progress.wsdb', mode='r')
@@ -535,6 +546,7 @@ def menu():
         con.commit()
     f.close()
     progress = list(cur.execute("""Select level_1, level_2, level_3, level_4 from main""").fetchone())
+    opened_levels = [i + 1 if i == 0 or progress[i - 1] != '∞' else 0 for i in range(4)]
     # инициализация окна
     pygame.init()
     size = 700, 400
@@ -542,9 +554,8 @@ def menu():
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption('The Walls')
     image = load_image('start.bmp')
-    pygame.mixer.music.load('data/music/start_music.mp3')
-    if music_on:
-        pygame.mixer.music.play(-1)
+    lst_of_track = os.listdir('data/music/main music')
+    running_track = -1
     menu_art = image.get_rect()
     image_1 = load_image('locked_level.png')
     button_up = Button(13, 432, 84, 50)
@@ -571,11 +582,10 @@ def menu():
                             event_pos = event.pos
                             keys, selection = 0, 0
                             e = event_pos[1]
-                            opened_levels = [i + 1 if i == 0 or progress[i - 1] != '∞' else 0 for i in range(4)]
                             level = [n for i, j, n in
                                      [(3, 87, 1), (93, 175, 2), (181, 262, 3), (268, 351, 4), (e, e + 1, None)] if
                                      e in range(i, j)][0]
-                            if 1 < event_pos[0] < 142 and (level in opened_levels or level == 1):
+                            if 1 < event_pos[0] < 142 and level in opened_levels:
                                 keys = eval(f'keys_{level}')
                                 selection = eval(f'level_{level}')
                                 running = False
@@ -590,8 +600,9 @@ def menu():
                                 screen = pygame.display.set_mode((500, 500))
 
                     elif event.type == pygame.KEYDOWN:
-                        pygame_keys = {pygame.K_1: 1, pygame.K_2: 2, pygame.K_3: 3, pygame.K_4: 4}
-                        if event.key in pygame_keys and pygame_keys[event.key] in progress:
+                        pygame_keys = {pygame.K_1: 1, pygame.K_2: 2, pygame.K_3: 3, pygame.K_4: 4,
+                                       pygame.K_KP1: 1, pygame.K_KP2: 2, pygame.K_KP3: 3, pygame.K_KP4: 4}
+                        if event.key in pygame_keys and pygame_keys[event.key] in opened_levels:
                             keys = eval(f'keys_{pygame_keys[event.key]}')
                             selection = eval(f'level_{pygame_keys[event.key]}')
                             running = False
@@ -602,7 +613,7 @@ def menu():
                                 pygame.mixer.music.stop()
                                 music_on = False
                             else:
-                                pygame.mixer.music.play(-1)
+                                pygame.mixer.music.play()
                                 music_on = True
 
                 elif position == 'help':
@@ -625,7 +636,6 @@ def menu():
         if position == 'menu':
             # отрисовка меню
             screen.blit(image, menu_art)
-            opened_levels = [i + 1 if i == 0 or progress[i - 1] != '∞' else 0 for i in range(4)]
             for lev in locked_levels:
                 if int(lev) not in opened_levels:
                     screen.blit(image_1, (1, locked_levels[lev]))
@@ -654,6 +664,12 @@ def menu():
             elif darken_percent == 0:
                 running = True
                 opening = False
+        if music_on and not pygame.mixer.music.get_busy():
+            running_track = (running_track + 1) % len(lst_of_track)
+            pygame.mixer.music.load('data/music/main music/' + lst_of_track[running_track])
+            if music_on:
+                pygame.mixer.music.play()
+
 
         pygame.display.update()
         clock.tick(50)
