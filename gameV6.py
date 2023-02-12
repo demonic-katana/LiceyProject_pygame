@@ -351,8 +351,8 @@ def game(WIDTH, HEIGHT):
         if music_on:
             game_sound = pygame.mixer.Sound("data/music/game_won_sound.wav")
         if progress[level_completed[keys] - 1] == '∞' or \
-                datetime.strptime(game_time_str, '%M:%S') < datetime.strptime(game_time_str, '%M:%S'):
-            progress.insert(level_completed[keys] - 1, game_time_str)
+                datetime.strptime(game_time_str, '%M:%S') < datetime.strptime(progress[level_completed[keys] - 1], '%M:%S'):
+            progress[level_completed[keys] - 1] = game_time_str
             save()
 
     elif game_position == 'game_over':
@@ -636,7 +636,7 @@ def menu():
             screen.blit(image2, help_art)
             if helping == 4:
                 n = 0
-                time_not = [164, 179, 203, 226]
+                time_not = [156, 179, 203, 226]
                 for i in progress:
                     font = pygame.font.SysFont("Courier New", 36 if i == '∞' else 20, bold=True)
                     text = font.render(i, True, 'black')
