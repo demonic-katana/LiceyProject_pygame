@@ -236,7 +236,7 @@ def game(WIDTH, HEIGHT):
                     elif event.type == pygame.KEYDOWN:
                         move_dct = {pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1),
                                     pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0)}
-                        if event.key in move_dct  and not pause:
+                        if event.key in move_dct and not pause:
                             e = event.key
                             if check_door(door_is_open, board.cell[player_pos[0] + move_dct[e][0]][
                                 player_pos[1] + move_dct[e][1]].process(['e'])):
@@ -247,10 +247,9 @@ def game(WIDTH, HEIGHT):
                         elif event.key == pygame.K_k:
                             if music_on:
                                 pygame.mixer.music.stop()
-                                music_on = False
                             else:
                                 pygame.mixer.music.play()
-                                music_on = True
+                            music_on = not music_on
                         elif event.key == pygame.K_ESCAPE:
                             pygame.mixer.music.stop()
                             return 1
