@@ -233,6 +233,12 @@ def game(WIDTH, HEIGHT):
                 if game_position == 'game_on':
                     if event.type == pygame.QUIT:
                         return 0
+                    if event.type == pygame.WINDOWFOCUSGAINED:
+                        pause = False
+                        pygame.mixer.music.set_volume(1)
+                    elif event.type == pygame.WINDOWFOCUSLOST:
+                        pause = True
+                        pygame.mixer.music.set_volume(0.5)
                     elif event.type == pygame.KEYDOWN:
                         move_dct = {pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1),
                                     pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0)}
