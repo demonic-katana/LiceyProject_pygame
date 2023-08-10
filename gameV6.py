@@ -233,53 +233,57 @@ def game(WIDTH, HEIGHT):
                 if game_position == 'game_on':
                     if event.type == pygame.QUIT:
                         return 0
-                    if event.type == pygame.WINDOWFOCUSGAINED:
-                        pause = False
-                        pygame.mixer.music.set_volume(1)
-                    elif event.type == pygame.WINDOWFOCUSLOST:
-                        pause = True
-                        pygame.mixer.music.set_volume(0.5)
+                    # Пауза/пуск если окно игры не в фокусе
+                    if event.type in [pygame.WINDOWFOCUSGAINED, pygame.WINDOWFOCUSLOST]:
+                        pause = not pause
+                        pygame.mixer.music.set_volume(0.5 if pygame.mixer.music.get_volume() == 1 else 1)
+
                     elif event.type == pygame.KEYDOWN:
                         move_dct = {pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1),
                                     pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0)}
                         if event.key in move_dct and not pause:
                             e = event.key
+                            # Движение
                             if check_door(door_is_open, board.cell[player_pos[0] + move_dct[e][0]][
                                 player_pos[1] + move_dct[e][1]].process(['e'])):
                                 board.move(*move_dct[e])
+                            # Бьёшься головой об дверь
                             elif not door_is_open and board.cell[player_pos[0] + move_dct[e][0]][
                                 player_pos[1] + move_dct[e][1]].process(['e']):
                                 not_is_exit = (f"Заперто. Нужно найти ещё {keys - players_keys} ключей.", 100)
+                        # Вкл/выкл музыки
                         elif event.key == pygame.K_k:
-                            if music_on:
-                                pygame.mixer.music.stop()
-                            else:
-                                pygame.mixer.music.play()
+                            pygame.mixer.music.stop() if music_on else pygame.mixer.music.play()
                             music_on = not music_on
+                        # Выход в главное меню
                         elif event.key == pygame.K_ESCAPE:
                             pygame.mixer.music.stop()
                             return 1
+                        # Пауза/пуск
                         elif event.key == pygame.K_SPACE:
                             pause = not pause
                             pygame.mixer.music.set_volume(0.5 if pause else 1)
+                        # Рестарт
                         elif event.key == pygame.K_r:
                             pygame.mixer.music.stop()
                             return _map
                 elif game_position == 'mini_game':
                     board, screen, game_position, running = mini_game(board, screen, game_position)
-
+        # Если наступил на ключ
         if board.cell[player_pos[0]][player_pos[1]].process(['m']):
             board.cell[player_pos[0]][player_pos[1]].image = board.images['.']
             board.cell[player_pos[0]][player_pos[1]].sign = '.'
             players_keys += 1
             if music_on:
                 pygame.mixer.Sound.play(key_sound)
+            # Проверка все ли ключи были собраны
             if players_keys == keys:
                 keys_color = (0, 255, 0)
                 door_is_open = True
                 if music_on:
                     pygame.mixer.Sound.play(door_opening_sound)
                 board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open.png')
+                # Дверь на выход, если это последний уровень
                 if len(door):
                     board.cell[board.exit_pos[0]][board.exit_pos[1]].image = load_image('door_open(exit).png')
 
@@ -337,11 +341,11 @@ def game(WIDTH, HEIGHT):
             if darken_percent == 0:
                 running = True
                 opening = False
+        # Переключение трека, если закончилась музыка
         if music_on and not pygame.mixer.music.get_busy():
             running_track = (running_track + 1) % len(lst_of_track)
             pygame.mixer.music.load('data/music/game music/' + lst_of_track[running_track])
-            if music_on:
-                pygame.mixer.music.play()
+            pygame.mixer.music.play()
 
         pygame.display.flip()
         if not pause:
@@ -349,7 +353,7 @@ def game(WIDTH, HEIGHT):
         clock.tick(20 if running else 50)
     pygame.mixer.music.set_volume(1)
     pygame.mixer.music.stop()
-
+    # Выигрышная кат-сцена в конце
     if len(door) and game_position == 'game_won':
         cast_count = 1
         image = load_image(f'cast_scene{cast_count}.png')
@@ -361,7 +365,7 @@ def game(WIDTH, HEIGHT):
                 datetime.strptime(game_time_str, '%M:%S') < datetime.strptime(progress[level_completed[keys] - 1], '%M:%S'):
             progress[level_completed[keys] - 1] = game_time_str
             save()
-
+    # Экран победы (со счётом) + музыка
     elif game_position == 'game_won':
         image = load_image('game_won.png')
         position_art = image.get_rect()
@@ -373,7 +377,7 @@ def game(WIDTH, HEIGHT):
                 datetime.strptime(game_time_str, '%M:%S') < datetime.strptime(progress[level_completed[keys] - 1], '%M:%S'):
             progress[level_completed[keys] - 1] = game_time_str
             save()
-
+    # Экран поражения
     elif game_position == 'game_over':
         image = load_image('game_over.png')
         position_art = image.get_rect()
@@ -390,23 +394,14 @@ def game(WIDTH, HEIGHT):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    if door and game_position == 'game_won':
-                        music_on = music_is_run
-                    pygame.mixer.music.stop()
-                    return 1
-            elif event.type == pygame.KEYDOWN:
-                if event.key in [pygame.K_SPACE, pygame.K_KP_ENTER, pygame.K_RETURN]:
+            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                if event.key in [pygame.K_SPACE, pygame.K_KP_ENTER, pygame.K_RETURN, pygame.MOUSEBUTTONDOWN]:
                     if door and game_position == 'game_won':
                         music_on = music_is_run
                     pygame.mixer.music.stop()
                     return 1
                 elif event.key == pygame.K_k:
-                    if music_on:
-                        pygame.mixer.music.stop()
-                    else:
-                        pygame.mixer.music.play()
+                    pygame.mixer.music.stop() if music_on else pygame.mixer.music.play()
                     music_on = not music_on
                 elif event.key == pygame.K_r:
                     pygame.mixer.music.stop()
@@ -445,6 +440,15 @@ def game(WIDTH, HEIGHT):
     return 0
 
 
+def check_for_winner_mini_game(field):
+    curplayer = list(field.keys())[0]
+    solution = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]]
+    for i in solution:
+        if all(j in field[curplayer] for j in i):
+            return 'game_on' if curplayer == 'x' else 'game_over'
+    return 'mini_game'
+
+
 def mini_game(board, screen, game_position):
     global music_on
     # настройки мини-игры
@@ -460,23 +464,12 @@ def mini_game(board, screen, game_position):
                 if event.button == 1:
                     event_pos = event.pos
                     if 31 < event_pos[0] < 300 and 104 < event_pos[1] < 373:
-                        quadrat = ((event_pos[0] - 31) // 91, (event_pos[1] - 104) // 91)
-                        if not len(board_mg[quadrat[1]][quadrat[0]]):
-                            board_mg[quadrat[1]][quadrat[0]] = 'x'
-                        for y in range(3):
-                            if board_mg[y][0] == board_mg[y][1] and board_mg[y][1] == board_mg[y][2]:
-                                if board_mg[y][0] == 'x':
-                                    game_position = 'game_on'
-                        for x in range(3):
-                            if board_mg[0][x] == board_mg[1][x] and board_mg[2][x] == board_mg[0][x]:
-                                if board_mg[0][x] == 'x':
-                                    game_position = 'game_on'
-                        if board_mg[0][0] == board_mg[1][1] and board_mg[0][0] == board_mg[2][2]:
-                            if board_mg[0][0] == 'x':
-                                game_position = 'game_on'
-                        if board_mg[0][2] == board_mg[1][1] and board_mg[2][0] == board_mg[1][1]:
-                            if board_mg[0][2] == 'x':
-                                game_position = 'game_on'
+                        square = ((event_pos[0] - 31) // 91, (event_pos[1] - 104) // 91)
+                        if not len(board_mg[square[1]][square[0]]):
+                            board_mg[square[1]][square[0]] = 'x'
+                        game_position = check_for_winner_mini_game({'x': [y*3+x+1 for x in range(3) for y in range(3)
+                                                                          if board_mg[y][x] == 'x']})
+
                         if game_position == 'mini_game':
                             chc = []
                             for y in range(3):
@@ -484,36 +477,18 @@ def mini_game(board, screen, game_position):
                                     if board_mg[y][x] == '':
                                         chc.append((y, x))
                             if len(chc):
-                                quadrat = choice(chc)
-                                board_mg[quadrat[0]][quadrat[1]] = 'o'
-                            for y in range(3):
-                                if board_mg[y][0] == board_mg[y][1] and board_mg[y][1] == board_mg[y][2]:
-                                    if board_mg[y][0] == 'o':
-                                        game_position = 'game_over'
-                                        running = False
-                            for x in range(3):
-                                if board_mg[0][x] == board_mg[1][x] and board_mg[2][x] == board_mg[0][x]:
-                                    if board_mg[0][x] == 'o':
-                                        game_position = 'game_over'
-                                        running = False
-                            if board_mg[0][0] == board_mg[1][1] and board_mg[0][0] == board_mg[2][2]:
-                                if board_mg[0][0] == 'o':
-                                    game_position = 'game_over'
-                                    running = False
-                            if board_mg[0][2] == board_mg[1][1] and board_mg[2][0] == board_mg[1][1]:
-                                if board_mg[0][2] == 'o':
-                                    game_position = 'game_over'
-                                    running = False
-                            if not len(chc):
+                                square = choice(chc)
+                                board_mg[square[0]][square[1]] = 'o'
+                            game_position = check_for_winner_mini_game({'o': [y * 3 + x + 1 for x in range(3)
+                                                                              for y in range(3)
+                                                                              if board_mg[y][x] == 'o']})
+                            if not len(chc) or game_position == 'game_over':
                                 game_position = 'game_over'
                                 running = False
-                        if game_position == 'game_on':
+                        else:
                             board_mg = [['', '', ''], ['', '', ''], ['', '', '']]
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_k:
-                if music_on:
-                    pygame.mixer.music.stop()
-                else:
-                    pygame.mixer.music.play(-1)
+                pygame.mixer.music.stop() if music_on else pygame.mixer.music.play(-1)
                 music_on = not music_on
         screen.fill(pygame.Color(0, 0, 0))
         image = load_image('mini_game1.png')
@@ -625,12 +600,9 @@ def menu():
                             if pygame_keys[event.key] == 4:
                                 door = 'door(exit).png'
                         elif event.key == pygame.K_k:
-                            if music_on:
-                                pygame.mixer.music.stop()
-                                music_on = False
-                            else:
-                                pygame.mixer.music.play()
-                                music_on = True
+                            pygame.mixer.music.stop() if music_on else pygame.mixer.music.play()
+                            music_on = not music_on
+
 
                 elif position == 'help':
                     if event.type == pygame.QUIT:
@@ -683,8 +655,7 @@ def menu():
         if music_on and not pygame.mixer.music.get_busy():
             running_track = (running_track + 1) % len(lst_of_track)
             pygame.mixer.music.load('data/music/main music/' + lst_of_track[running_track])
-            if music_on:
-                pygame.mixer.music.play()
+            pygame.mixer.music.play()
         pygame.display.update()
         clock.tick(50)
     pygame.mixer.music.stop()
